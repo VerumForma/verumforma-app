@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 70 2048 1200" preserveAspectRatio="xMidYMid meet">
+  <title>VerumForma</title>
+  
+  <path d="M 562 94 L 768 94 L 1012 600 L 912 800 Z" fill="#414548"></path>
+  
+  <path d="M 1040 94 L 1472 94 L 1196 210 L 1040 540 Z" fill="#414548"></path>
+  
+  <path d="M 1248 252 L 1456 164 L 1156 776 L 948 864 Z" fill="#7B7C7E"></path>
+  
+  <text x="1024" y="1210" font-family="&#39;Montserrat&#39;,&#39;Helvetica Neue&#39;,Arial,sans-serif" font-weight="300" font-size="220" letter-spacing="14" fill="#404145" text-anchor="middle">VERUMFORMA</text>
+</svg>
