@@ -51,6 +51,93 @@ export type Database = {
         Update: { level?: PermissionLevel }
         Relationships: []
       }
+      clients: {
+        Row: {
+          id: string
+          kind: 'empresa' | 'individual'
+          name: string
+          company: string | null
+          nif: string | null
+          email: string | null
+          phone: string | null
+          address: string | null
+          city: string | null
+          country: string | null
+          website: string | null
+          status: 'potencial' | 'ativo' | 'inativo'
+          languages: string[]
+          incomplete: boolean
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          kind?: 'empresa' | 'individual'
+          name: string
+          company?: string | null
+          nif?: string | null
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          website?: string | null
+          status?: 'potencial' | 'ativo' | 'inativo'
+          languages?: string[]
+          incomplete?: boolean
+          notes?: string | null
+        }
+        Update: {
+          kind?: 'empresa' | 'individual'
+          name?: string
+          company?: string | null
+          nif?: string | null
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          website?: string | null
+          status?: 'potencial' | 'ativo' | 'inativo'
+          languages?: string[]
+          incomplete?: boolean
+          notes?: string | null
+        }
+        Relationships: []
+      }
+      client_contacts: {
+        Row: {
+          id: string
+          client_id: string
+          name: string
+          role: string | null
+          email: string | null
+          phone: string | null
+          is_primary: boolean
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          client_id: string
+          name: string
+          role?: string | null
+          email?: string | null
+          phone?: string | null
+          is_primary?: boolean
+          notes?: string | null
+        }
+        Update: {
+          name?: string
+          role?: string | null
+          email?: string | null
+          phone?: string | null
+          is_primary?: boolean
+          notes?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
@@ -62,3 +149,5 @@ export type Database = {
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Role = Database['public']['Tables']['roles']['Row']
 export type RolePermission = Database['public']['Tables']['role_permissions']['Row']
+export type Client = Database['public']['Tables']['clients']['Row']
+export type ClientContact = Database['public']['Tables']['client_contacts']['Row']
