@@ -138,6 +138,189 @@ export type Database = {
         }
         Relationships: []
       }
+      suppliers: {
+        Row: {
+          id: string
+          kind: 'empresa' | 'individual'
+          name: string
+          company: string | null
+          nif: string | null
+          email: string | null
+          phone: string | null
+          address: string | null
+          city: string | null
+          country: string | null
+          website: string | null
+          supplies: string[]
+          labour_type: string | null
+          languages: string[]
+          status: 'potencial' | 'ativo' | 'inativo'
+          incomplete: boolean
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          kind?: 'empresa' | 'individual'
+          name: string
+          company?: string | null
+          nif?: string | null
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          website?: string | null
+          supplies?: string[]
+          labour_type?: string | null
+          languages?: string[]
+          status?: 'potencial' | 'ativo' | 'inativo'
+          incomplete?: boolean
+          notes?: string | null
+        }
+        Update: {
+          kind?: 'empresa' | 'individual'
+          name?: string
+          company?: string | null
+          nif?: string | null
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          website?: string | null
+          supplies?: string[]
+          labour_type?: string | null
+          languages?: string[]
+          status?: 'potencial' | 'ativo' | 'inativo'
+          incomplete?: boolean
+          notes?: string | null
+        }
+        Relationships: []
+      }
+      supplier_contacts: {
+        Row: {
+          id: string
+          supplier_id: string
+          name: string
+          role: string | null
+          email: string | null
+          phone: string | null
+          is_primary: boolean
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          supplier_id: string
+          name: string
+          role?: string | null
+          email?: string | null
+          phone?: string | null
+          is_primary?: boolean
+          notes?: string | null
+        }
+        Update: {
+          name?: string
+          role?: string | null
+          email?: string | null
+          phone?: string | null
+          is_primary?: boolean
+          notes?: string | null
+        }
+        Relationships: []
+      }
+      partners: {
+        Row: {
+          id: string
+          kind: 'empresa' | 'individual'
+          name: string
+          company: string | null
+          nif: string | null
+          email: string | null
+          phone: string | null
+          address: string | null
+          city: string | null
+          country: string | null
+          website: string | null
+          partner_type: string | null
+          languages: string[]
+          status: 'potencial' | 'ativo' | 'inativo'
+          incomplete: boolean
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          kind?: 'empresa' | 'individual'
+          name: string
+          company?: string | null
+          nif?: string | null
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          website?: string | null
+          partner_type?: string | null
+          languages?: string[]
+          status?: 'potencial' | 'ativo' | 'inativo'
+          incomplete?: boolean
+          notes?: string | null
+        }
+        Update: {
+          kind?: 'empresa' | 'individual'
+          name?: string
+          company?: string | null
+          nif?: string | null
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          website?: string | null
+          partner_type?: string | null
+          languages?: string[]
+          status?: 'potencial' | 'ativo' | 'inativo'
+          incomplete?: boolean
+          notes?: string | null
+        }
+        Relationships: []
+      }
+      partner_contacts: {
+        Row: {
+          id: string
+          partner_id: string
+          name: string
+          role: string | null
+          email: string | null
+          phone: string | null
+          is_primary: boolean
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          partner_id: string
+          name: string
+          role?: string | null
+          email?: string | null
+          phone?: string | null
+          is_primary?: boolean
+          notes?: string | null
+        }
+        Update: {
+          name?: string
+          role?: string | null
+          email?: string | null
+          phone?: string | null
+          is_primary?: boolean
+          notes?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
@@ -151,3 +334,7 @@ export type Role = Database['public']['Tables']['roles']['Row']
 export type RolePermission = Database['public']['Tables']['role_permissions']['Row']
 export type Client = Database['public']['Tables']['clients']['Row']
 export type ClientContact = Database['public']['Tables']['client_contacts']['Row']
+export type Supplier = Database['public']['Tables']['suppliers']['Row']
+export type SupplierContact = Database['public']['Tables']['supplier_contacts']['Row']
+export type Partner = Database['public']['Tables']['partners']['Row']
+export type PartnerContact = Database['public']['Tables']['partner_contacts']['Row']

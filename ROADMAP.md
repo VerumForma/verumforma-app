@@ -26,3 +26,20 @@ Notas de direção. Não implementar já, mas construir o presente sem fechar po
 ## Outros diferidos
 - Editor visual da matriz de permissões (quando houver 2-3 módulos).
 - Dashboard interativo/editável (KPIs + quick links) — construir à medida que os módulos nascem.
+
+## Decisões de módulos (2026-08-05)
+- Orçamentos: UM módulo com direção (recebidos de fornecedores / enviados a clientes), filtrável.
+- Faturação: livro de TODOS os movimentos bancários da empresa (ordenados, pagamentos, recibos).
+  Cada registo = info base + ficheiro anexo (fatura fornecedor / fatura a cliente / recibo contabilidade).
+  Faturas de fornecedores serão lidas artigo-a-artigo para alimentar o catálogo de Materiais. (Depois.)
+- Fornecedores: separadores Projetos / Orçamentos / Materiais / Finanças são VISTAS de ligação
+  filtradas por fornecedor_id (sem tabelas duplicadas). Campo "Fornece" (materiais/mao_obra/servicos/
+  equipamento); mão de obra tem caixa extra para o tipo.
+
+## Criar entidade a partir de fatura (extensão do Smart Importer) — 2026-08-05
+- Fornecedores e Parceiros podem ter faturas associadas.
+- Fluxo: entra fatura no módulo de Faturação → leitura algorítmica coloca-a no sítio certo e
+  extrai artigos/materiais → se detetar fornecedor/parceiro NOVO, propõe criar a entidade já
+  pré-preenchida com os dados da fatura, à espera de confirmação final do utilizador.
+- Reforça: (1) mesma forma de campos base entre clientes/fornecedores/parceiros; (2) flag
+  `incomplete` para entidades criadas por extração automática (entram a amarelo até revisão).

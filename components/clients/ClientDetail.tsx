@@ -5,7 +5,7 @@ import Link from 'next/link'
 import type { Client, ClientContact } from '@/lib/supabase/types'
 import { STATUS_META, KIND_LABEL } from '@/lib/clients'
 import ClientContacts from './ClientContacts'
-import { buildClientVCard, downloadVCard } from '@/lib/vcard'
+import { buildEntityVCard, downloadVCard } from '@/lib/vcard'
 import { ArrowLeft, MapPin, AlertTriangle, Download } from 'lucide-react'
 
 type Tab = 'overview' | 'contactos' | 'projetos' | 'orcamentos' | 'financas'
@@ -54,7 +54,7 @@ export default function ClientDetail({ client, canEdit, initialContacts }: { cli
 
       <div className="flex items-start justify-between gap-4 mb-1">
         <h1 className="font-playfair text-3xl">{client.name}</h1>
-        <button onClick={() => downloadVCard(`${client.name}.vcf`, buildClientVCard(client))} className="shrink-0 inline-flex items-center gap-2 text-xs uppercase tracking-wider border border-[var(--border)] rounded-[3px] px-3 py-2 hover:bg-[rgba(26,26,26,0.04)]" title="Exportar para lista de contactos (.vcf)">
+        <button onClick={() => downloadVCard(`${client.name}.vcf`, buildEntityVCard(client))} className="shrink-0 inline-flex items-center gap-2 text-xs uppercase tracking-wider border border-[var(--border)] rounded-[3px] px-3 py-2 hover:bg-[rgba(26,26,26,0.04)]" title="Exportar para lista de contactos (.vcf)">
           <Download size={14} /> Exportar
         </button>
       </div>

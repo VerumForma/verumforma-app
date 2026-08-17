@@ -52,7 +52,7 @@ const groups: Group[] = [
 ]
 
 // Modules that already have a real page. Others render as "em breve".
-const BUILT = new Set<string>(['dashboard', 'clientes'])
+const BUILT = new Set<string>(['dashboard', 'clientes', 'fornecedores', 'parceiros'])
 
 export default function Sidebar({ allowed }: { allowed: string[] }) {
   const pathname = usePathname()

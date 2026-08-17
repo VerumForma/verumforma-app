@@ -1,20 +1,24 @@
-import type { Client, ClientContact } from './supabase/types'
+// Geração de vCard (.vcf) a partir de entidades/contactos. Tipos estruturais
+// para servir clientes, fornecedores, etc.
 
-// Escapa caracteres especiais do vCard.
-function esc(v?: string | null): string {
-  return String(v ?? '')
-    .replace(/\\/g, '\\\\')
-    .replace(/\n/g, '\\n')
-    .replace(/,/g, '\\,')
-    .replace(/;/g, '\\;')
+type VEntity = {
+  name: string; company?: string | null; kind?: string | null
+  email?: string | null; phone?: string | null
+  address?: string | null; city?: string | null; country?: string | null
+  website?: string | null; nif?: string | null; notes?: string | null
+}
+type VPerson = {
+  name: string; role?: string | null; email?: string | null; phone?: string | null; notes?: string | null
 }
 
+function esc(v?: string | null): string {
+  return String(v ?? '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
+}
 function build(lines: (string | null | undefined)[]): string {
   return ['BEGIN:VCARD', 'VERSION:3.0', ...lines.filter(Boolean), 'END:VCARD'].join('\r\n')
 }
 
-// vCard de um cliente (a entidade).
-export function buildClientVCard(c: Client): string {
+export function buildEntityVCard(c: VEntity): string {
   const org = c.company || (c.kind === 'empresa' ? c.name : '')
   return build([
     `FN:${esc(c.name)}`,
@@ -28,8 +32,7 @@ export function buildClientVCard(c: Client): string {
   ])
 }
 
-// vCard de uma pessoa de contacto dentro de uma empresa.
-export function buildContactVCard(c: ClientContact, orgName?: string): string {
+export function buildContactVCard(c: VPerson, orgName?: string): string {
   return build([
     `FN:${esc(c.name)}`,
     `N:;${esc(c.name)};;;`,
@@ -41,15 +44,12 @@ export function buildContactVCard(c: ClientContact, orgName?: string): string {
   ])
 }
 
-// Descarrega o .vcf (abre a app Contactos no desktop/telemóvel).
 export function downloadVCard(filename: string, vcard: string) {
   const blob = new Blob([vcard], { type: 'text/vcard;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
   a.download = filename.replace(/[^\w.\- ]+/g, '_')
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
+  document.body.appendChild(a); a.click(); a.remove()
   URL.revokeObjectURL(url)
 }
