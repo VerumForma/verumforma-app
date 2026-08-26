@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="max-w-6xl">
+    <div className="w-full">
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="font-playfair text-3xl mb-1">Dashboard</h1>

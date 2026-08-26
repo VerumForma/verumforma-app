@@ -1,13 +1,11 @@
 import { redirect } from 'next/navigation'
 import { createClient, supabaseConfigured } from '@/lib/supabase/server'
 import { getPermissions, canView } from '@/lib/permissions'
-import Sidebar from '@/components/layout/Sidebar'
-import Topbar from '@/components/layout/Topbar'
+import AppShell from '@/components/layout/AppShell'
 import type { Profile, Role } from '@/lib/supabase/types'
 
 export const dynamic = 'force-dynamic'
 
-// Modules visible during setup (no Supabase yet) — show everything.
 const ALL = ['dashboard','projetos','tarefas','calendario','clientes','orcamentos','fornecedores','parceiros','equipa','materiais','assiduidade','financas','estatisticas','investimentos','definicoes']
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -17,9 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (supabaseConfigured()) {
     const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
     name = user.email ?? ''
 
@@ -37,12 +33,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen flex bg-[var(--bg)]">
-      <Sidebar allowed={allowed} />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Topbar name={name} role={roleLabel} />
-        <main className="flex-1 p-6 md:p-10 overflow-y-auto">{children}</main>
-      </div>
-    </div>
+    <AppShell allowed={allowed} name={name} role={roleLabel}>
+      {children}
+    </AppShell>
   )
 }

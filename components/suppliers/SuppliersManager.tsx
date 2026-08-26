@@ -67,6 +67,10 @@ export default function SuppliersManager({ initial, canEdit }: { initial: Suppli
       city: draft.city || null,
       country: draft.country || null,
       website: draft.website || null,
+      linkedin: draft.linkedin || null,
+      instagram: draft.instagram || null,
+      facebook: draft.facebook || null,
+      x: draft.x || null,
       status: draft.status ?? 'potencial',
       languages: draft.languages ?? [],
       supplies: draft.supplies ?? [],
@@ -91,7 +95,7 @@ export default function SuppliersManager({ initial, canEdit }: { initial: Suppli
   const td = 'px-4 py-3 text-sm'
 
   return (
-    <div className="max-w-6xl">
+    <div className="w-full">
       <div className="flex items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="font-playfair text-3xl mb-1">Fornecedores</h1>
@@ -293,6 +297,10 @@ export default function SuppliersManager({ initial, canEdit }: { initial: Suppli
                 <label className={label}>Website</label>
                 <input className={input} value={draft.website ?? ''} onChange={e => setDraft({ ...draft, website: e.target.value })} />
               </div>
+              <div><label className={label}>LinkedIn</label><input className={input} value={draft.linkedin ?? ''} onChange={e => setDraft({ ...draft, linkedin: e.target.value })} /></div>
+              <div><label className={label}>Instagram</label><input className={input} value={draft.instagram ?? ''} onChange={e => setDraft({ ...draft, instagram: e.target.value })} /></div>
+              <div><label className={label}>Facebook</label><input className={input} value={draft.facebook ?? ''} onChange={e => setDraft({ ...draft, facebook: e.target.value })} /></div>
+              <div><label className={label}>X</label><input className={input} value={draft.x ?? ''} onChange={e => setDraft({ ...draft, x: e.target.value })} /></div>
               <div className="md:col-span-2">
                 <label className={label}>Morada</label>
                 <input className={input} value={draft.address ?? ''} onChange={e => setDraft({ ...draft, address: e.target.value })} />

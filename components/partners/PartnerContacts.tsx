@@ -3,13 +3,11 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { PartnerContact } from '@/lib/supabase/types'
-import { Plus, Pencil, Trash2, Star, X, Download } from 'lucide-react'
 import { buildContactVCard, downloadVCard } from '@/lib/vcard'
+import { Plus, Pencil, Trash2, Star, Download, Users } from 'lucide-react'
 
-const input =
-  'w-full bg-white text-sm px-3 py-2 border border-[var(--border)] rounded-[3px] outline-none focus:border-[#1A1A1A] transition-colors'
+const input = 'w-full bg-white text-sm px-3 py-2 border border-[var(--border)] rounded-[3px] outline-none focus:border-[#1A1A1A]'
 const label = 'block text-xs uppercase tracking-wider text-[var(--muted)] mb-1.5'
-
 type Draft = Partial<PartnerContact>
 
 export default function PartnerContacts({ partnerId, initial, canEdit, orgName }: { partnerId: string; initial: PartnerContact[]; canEdit: boolean; orgName?: string }) {
@@ -23,18 +21,10 @@ export default function PartnerContacts({ partnerId, initial, canEdit, orgName }
     const { data } = await supabase.from('partner_contacts').select('*').eq('partner_id', partnerId).order('is_primary', { ascending: false }).order('name')
     setRows((data ?? []) as PartnerContact[])
   }
-
   async function save() {
     if (!draft?.name?.trim()) { setError('O nome é obrigatório.'); return }
     setSaving(true); setError('')
-    const base = {
-      name: draft.name!.trim(),
-      role: draft.role || null,
-      email: draft.email || null,
-      phone: draft.phone || null,
-      is_primary: !!draft.is_primary,
-      notes: draft.notes || null,
-    }
+    const base = { name: draft.name!.trim(), role: draft.role || null, email: draft.email || null, phone: draft.phone || null, is_primary: !!draft.is_primary, notes: draft.notes || null }
     const { error } = draft.id
       ? await supabase.from('partner_contacts').update(base).eq('id', draft.id)
       : await supabase.from('partner_contacts').insert({ ...base, partner_id: partnerId })
@@ -42,56 +32,26 @@ export default function PartnerContacts({ partnerId, initial, canEdit, orgName }
     if (error) { setError(error.message); return }
     setDraft(null); refresh()
   }
-
-  async function remove(id: string) {
-    if (!confirm('Eliminar este contacto?')) return
-    await supabase.from('partner_contacts').delete().eq('id', id); refresh()
-  }
+  async function remove(id: string) { if (confirm('Eliminar este contacto?')) { await supabase.from('partner_contacts').delete().eq('id', id); refresh() } }
 
   return (
-    <div>
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[12px] p-6">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-[var(--muted)]">{rows.length} {rows.length === 1 ? 'contacto' : 'contactos'} dentro da empresa</p>
-        {canEdit && !draft && (
-          <button onClick={() => setDraft({ name: '', is_primary: false })} className="inline-flex items-center gap-2 text-xs uppercase tracking-wider bg-[#1A1A1A] text-white px-3 py-2 rounded-[3px] hover:opacity-80">
-            <Plus size={14} /> Contacto
-          </button>
-        )}
+        <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)] inline-flex items-center gap-2"><Users size={15} /> Contactos na empresa</p>
+        {canEdit && !draft && <button onClick={() => setDraft({ name: '', is_primary: false })} className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-[#1A1A1A] hover:opacity-70"><Plus size={14} /> Adicionar</button>}
       </div>
 
       {draft && (
-        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5 mb-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-playfair text-lg">{draft.id ? 'Editar' : 'Novo'} contacto</h3>
-            <button onClick={() => setDraft(null)} className="text-[var(--muted)] hover:text-[#1A1A1A]"><X size={18} /></button>
+        <div className="border border-[var(--border)] rounded-[6px] p-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div><label className={label}>Nome *</label><input className={input} value={draft.name ?? ''} onChange={e => setDraft({ ...draft, name: e.target.value })} /></div>
+            <div><label className={label}>Cargo / função</label><input className={input} value={draft.role ?? ''} onChange={e => setDraft({ ...draft, role: e.target.value })} /></div>
+            <div><label className={label}>Email</label><input className={input} value={draft.email ?? ''} onChange={e => setDraft({ ...draft, email: e.target.value })} /></div>
+            <div><label className={label}>Telefone</label><input className={input} value={draft.phone ?? ''} onChange={e => setDraft({ ...draft, phone: e.target.value })} /></div>
+            <div className="md:col-span-2"><label className={label}>Notas</label><textarea rows={2} className={input} value={draft.notes ?? ''} onChange={e => setDraft({ ...draft, notes: e.target.value })} /></div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className={label}>Nome *</label>
-              <input className={input} value={draft.name ?? ''} onChange={e => setDraft({ ...draft, name: e.target.value })} />
-            </div>
-            <div>
-              <label className={label}>Cargo / função</label>
-              <input className={input} value={draft.role ?? ''} onChange={e => setDraft({ ...draft, role: e.target.value })} />
-            </div>
-            <div>
-              <label className={label}>Email</label>
-              <input className={input} value={draft.email ?? ''} onChange={e => setDraft({ ...draft, email: e.target.value })} />
-            </div>
-            <div>
-              <label className={label}>Telefone</label>
-              <input className={input} value={draft.phone ?? ''} onChange={e => setDraft({ ...draft, phone: e.target.value })} />
-            </div>
-            <div className="md:col-span-2">
-              <label className={label}>Notas</label>
-              <textarea rows={2} className={input} value={draft.notes ?? ''} onChange={e => setDraft({ ...draft, notes: e.target.value })} />
-            </div>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={!!draft.is_primary} onChange={e => setDraft({ ...draft, is_primary: e.target.checked })} />
-              Contacto principal
-            </label>
-          </div>
-          {error && <p className="text-xs text-red-500 mt-3">{error}</p>}
+          <label className="flex items-center gap-2 text-sm mt-4 cursor-pointer"><input type="checkbox" checked={!!draft.is_primary} onChange={e => setDraft({ ...draft, is_primary: e.target.checked })} /> Contacto principal</label>
+          {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setDraft(null)} className="text-sm px-4 py-1.5 border border-[var(--border)] rounded-[3px] hover:bg-[rgba(26,26,26,0.04)]">Cancelar</button>
             <button onClick={save} disabled={saving} className="text-sm bg-[#1A1A1A] text-white px-4 py-1.5 rounded-[3px] hover:opacity-80 disabled:opacity-50">{saving ? 'A guardar…' : 'Guardar'}</button>
@@ -99,27 +59,24 @@ export default function PartnerContacts({ partnerId, initial, canEdit, orgName }
         </div>
       )}
 
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] divide-y divide-[var(--border)]">
-        {rows.length === 0 && <p className="text-sm text-[var(--muted)] p-6">Ainda não há contactos registados nesta empresa.</p>}
+      {rows.length === 0 && !draft && <p className="text-sm text-[var(--muted)]">Ainda não há contactos registados.</p>}
+      <div className="divide-y divide-[var(--border)]">
         {rows.map(c => (
-          <div key={c.id} className="flex items-start gap-4 p-4">
+          <div key={c.id} className="flex items-start gap-4 py-3 first:pt-0">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium flex items-center gap-1.5">
-                {c.is_primary && <Star size={13} className="text-amber-500 fill-amber-500 shrink-0" aria-label="Principal" />}
-                {c.name}
-                {c.role && <span className="text-[var(--muted)] font-normal">· {c.role}</span>}
+                {c.is_primary && <Star size={13} className="text-amber-500 fill-amber-500 shrink-0" />}
+                {c.name}{c.role && <span className="text-[var(--muted)] font-normal">· {c.role}</span>}
               </p>
               <p className="text-xs text-[var(--muted)] truncate">{[c.email, c.phone].filter(Boolean).join(' · ') || '—'}</p>
               {c.notes && <p className="text-xs text-[var(--muted)] mt-1">{c.notes}</p>}
             </div>
             <div className="shrink-0 whitespace-nowrap">
               <button onClick={() => downloadVCard(`${c.name}.vcf`, buildContactVCard(c, orgName))} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1" title="Exportar (.vcf)"><Download size={15} /></button>
-              {canEdit && (
-                <>
-                  <button onClick={() => { setDraft(c); setError('') }} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1 ml-1"><Pencil size={15} /></button>
-                  <button onClick={() => remove(c.id)} className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={15} /></button>
-                </>
-              )}
+              {canEdit && <>
+                <button onClick={() => { setDraft(c); setError('') }} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1 ml-1"><Pencil size={15} /></button>
+                <button onClick={() => remove(c.id)} className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={15} /></button>
+              </>}
             </div>
           </div>
         ))}

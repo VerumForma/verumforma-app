@@ -43,3 +43,17 @@ Notas de direção. Não implementar já, mas construir o presente sem fechar po
   pré-preenchida com os dados da fatura, à espera de confirmação final do utilizador.
 - Reforça: (1) mesma forma de campos base entre clientes/fornecedores/parceiros; (2) flag
   `incomplete` para entidades criadas por extração automática (entram a amarelo até revisão).
+
+## Orçamentos — margem e IVA (para quando construirmos) — 2026-08-05
+- Orçamentos calculados SEMPRE sem IVA; IVA em vigor aplicado só na apresentação ao cliente.
+- Dois preços por artigo: (1) CUSTO REAL, interno, sem lucro (soma da composição do material composto);
+  (2) PREÇO FINAL ao cliente = custo real + coeficiente de lucro. O lucro é distribuído pelos artigos
+  na preparação da entrega do orçamento. A margem vive no Orçamento; o material composto fica sempre a custo real.
+
+## Materiais — notas de modelo — 2026-08-05
+- Preços dos materiais simples e da mão de obra são alimentados pela FATURAÇÃO (leitura de faturas,
+  artigo a artigo, por fornecedor). Cada material/mão de obra tem HISTÓRICO de preços + gráfico de flutuação
+  (filtrável por todos / por fornecedor). Um material pode ter vários fornecedores.
+- Mão de obra: €/hora calculado a partir do ordenado BRUTO (fórmula a definir depois). Catálogo próprio.
+- Material composto = custo real (sem lucro), qty líquidas por componente + coeficiente de desperdício;
+  mão de obra em horas decimais (0,25 = 15min).
