@@ -57,3 +57,30 @@ Notas de direção. Não implementar já, mas construir o presente sem fechar po
 - Mão de obra: €/hora calculado a partir do ordenado BRUTO (fórmula a definir depois). Catálogo próprio.
 - Material composto = custo real (sem lucro), qty líquidas por componente + coeficiente de desperdício;
   mão de obra em horas decimais (0,25 = 15min).
+
+## Módulos Stock e POS (Loja) — decisão 2026-08-27
+- Decidido: dois módulos NOVOS — **Stock** e **POS (Loja)** — separados do módulo Materiais.
+  Motivo: com a nova loja de Montijo passa a haver stock de material para venda + necessidade de POS.
+- Materiais = CATÁLOGO (o que o artigo é + preço). Stock = QUANTIDADES por local + MOVIMENTOS (entradas/saídas).
+  Não meter quantidades dentro de Materiais; o Stock é que gere o "inserir/retirar" estilo POS.
+- Entrada de material (vinda de fornecedor) declara LOCAL DE APLICAÇÃO:
+  (a) guardar em armazém — indicar o DEPARTAMENTO do armazém (estaleiro, carpintaria, estante XPTO…);
+  (b) aplicar diretamente numa OBRA.
+- Saídas de stock por MOTIVO: consumo em obra (project_id), venda ao cliente final (POS), transferência, ajuste/quebra.
+  "Apontar X baldes a uma obra" = saída de stock com motivo=consumo + project_id (usa conversão de unidades já feita
+  em material_units: stock vive na unidade base, o movimento entra em qualquer unidade e converte).
+- POS tem de emitir documento fiscal CERTIFICADO pela AT (lei PT). NÃO construir emissão própria — integrar API de
+  software certificado (candidatos a validar: Vendus (retalho+POS+hardware, API), Moloni, InvoiceXpress, Cegid/Sage).
+  O nosso módulo POS = frontend de venda que chama a API certificada p/ o documento fiscal + regista saída de stock + recibo.
+- Dependências: Stock depende de Materiais (feito) e liga a Finanças (compra→Despesa; venda→Recibo). project_id já
+  preparado em Finanças e a preparar em Stock. Projetos ganha prioridade (necessário p/ "apontar a obra" ter destino real).
+- Extração de fatura de fornecedor artigo-a-artigo (fase B do Smart Importer) passa a alimentar ENTRADAS de stock
+  (com local de aplicação) além dos preços de Materiais.
+
+## Ordem de construção acordada — 2026-08-27
+1. Fechar/testar Finanças (migração 021 no Supabase + teste localhost).
+2. **Projetos** (decidido próximo — é o hub; dá destino ao 'apontar à obra' do Stock e ao project_id das Finanças).
+3. Stock.
+4. Orçamentos.
+5. POS (Loja) — depende de Stock + fornecedor certificado AT. Pesquisa de APIs certificadas (Vendus/Moloni/InvoiceXpress/Cegid) ADIADA a pedido do João (fica registada aqui).
+6. Estatísticas (agrega tudo; encaixa quando houver dados).

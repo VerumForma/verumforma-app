@@ -40,7 +40,7 @@ const groups: Group[] = [
   ] },
 ]
 
-const BUILT = new Set<string>(['dashboard', 'clientes', 'fornecedores', 'parceiros', 'equipa', 'materiais'])
+const BUILT = new Set<string>(['dashboard', 'clientes', 'fornecedores', 'parceiros', 'equipa', 'materiais', 'financas'])
 
 export default function Sidebar({ allowed, name, role, onNavigate }: { allowed: string[]; name: string; role: string; onNavigate?: () => void }) {
   const pathname = usePathname()

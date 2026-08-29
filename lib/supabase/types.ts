@@ -511,6 +511,48 @@ export type Database = {
         Update: { label?: string; per_base?: number }
         Relationships: []
       }
+      expense_categories: {
+        Row: { id: string; name: string; color: string; internal: boolean; created_by: string | null; created_at: string }
+        Insert: { id?: string; name: string; color?: string; internal?: boolean }
+        Update: { name?: string; color?: string; internal?: boolean }
+        Relationships: []
+      }
+      expenses: {
+        Row: { id: string; title: string; supplier_id: string | null; project_id: string | null; category_id: string | null; status: 'pending' | 'approved' | 'paid' | 'overdue' | 'cancelled'; amount: number; vat_rate: number; currency: string; reference: string | null; issue_date: string | null; due_date: string | null; paid_date: string | null; internal: boolean; notes: string | null; created_by: string | null; created_at: string }
+        Insert: { id?: string; title: string; supplier_id?: string | null; project_id?: string | null; category_id?: string | null; status?: 'pending' | 'approved' | 'paid' | 'overdue' | 'cancelled'; amount?: number; vat_rate?: number; currency?: string; reference?: string | null; issue_date?: string | null; due_date?: string | null; paid_date?: string | null; internal?: boolean; notes?: string | null }
+        Update: { title?: string; supplier_id?: string | null; project_id?: string | null; category_id?: string | null; status?: 'pending' | 'approved' | 'paid' | 'overdue' | 'cancelled'; amount?: number; vat_rate?: number; currency?: string; reference?: string | null; issue_date?: string | null; due_date?: string | null; paid_date?: string | null; internal?: boolean; notes?: string | null }
+        Relationships: []
+      }
+      receipts: {
+        Row: { id: string; title: string; client_id: string | null; project_id: string | null; status: 'draft' | 'issued' | 'paid' | 'overdue' | 'cancelled'; amount: number; vat_rate: number; currency: string; reference: string | null; issue_date: string | null; paid_date: string | null; notes: string | null; created_by: string | null; created_at: string }
+        Insert: { id?: string; title?: string; client_id?: string | null; project_id?: string | null; status?: 'draft' | 'issued' | 'paid' | 'overdue' | 'cancelled'; amount?: number; vat_rate?: number; currency?: string; reference?: string | null; issue_date?: string | null; paid_date?: string | null; notes?: string | null }
+        Update: { title?: string; client_id?: string | null; project_id?: string | null; status?: 'draft' | 'issued' | 'paid' | 'overdue' | 'cancelled'; amount?: number; vat_rate?: number; currency?: string; reference?: string | null; issue_date?: string | null; paid_date?: string | null; notes?: string | null }
+        Relationships: []
+      }
+      credit_notes: {
+        Row: { id: string; receipt_id: string; amount: number; reason: string | null; issue_date: string | null; created_at: string }
+        Insert: { id?: string; receipt_id: string; amount?: number; reason?: string | null; issue_date?: string | null }
+        Update: { amount?: number; reason?: string | null; issue_date?: string | null }
+        Relationships: []
+      }
+      payroll: {
+        Row: { id: string; staff_id: string | null; period: string; status: 'draft' | 'approved' | 'paid'; currency: string; category_id: string | null; paid_date: string | null; notes: string | null; created_by: string | null; created_at: string }
+        Insert: { id?: string; staff_id?: string | null; period: string; status?: 'draft' | 'approved' | 'paid'; currency?: string; category_id?: string | null; paid_date?: string | null; notes?: string | null }
+        Update: { staff_id?: string | null; period?: string; status?: 'draft' | 'approved' | 'paid'; currency?: string; category_id?: string | null; paid_date?: string | null; notes?: string | null }
+        Relationships: []
+      }
+      payroll_lines: {
+        Row: { id: string; payroll_id: string; kind: 'earning' | 'deduction'; type: string; description: string | null; amount: number; sort: number; created_at: string }
+        Insert: { id?: string; payroll_id: string; kind?: 'earning' | 'deduction'; type?: string; description?: string | null; amount?: number; sort?: number }
+        Update: { kind?: 'earning' | 'deduction'; type?: string; description?: string | null; amount?: number; sort?: number }
+        Relationships: []
+      }
+      finance_attachments: {
+        Row: { id: string; entity_type: 'expense' | 'receipt' | 'payroll'; entity_id: string; name: string; file_path: string; created_at: string }
+        Insert: { id?: string; entity_type: 'expense' | 'receipt' | 'payroll'; entity_id: string; name: string; file_path: string }
+        Update: { name?: string }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
@@ -542,3 +584,10 @@ export type LabourPrice = Database['public']['Tables']['labour_prices']['Row']
 export type Composite = Database['public']['Tables']['composites']['Row']
 export type CompositeItem = Database['public']['Tables']['composite_items']['Row']
 export type MaterialUnit = Database['public']['Tables']['material_units']['Row']
+export type ExpenseCategory = Database['public']['Tables']['expense_categories']['Row']
+export type Expense = Database['public']['Tables']['expenses']['Row']
+export type Receipt = Database['public']['Tables']['receipts']['Row']
+export type CreditNote = Database['public']['Tables']['credit_notes']['Row']
+export type Payroll = Database['public']['Tables']['payroll']['Row']
+export type PayrollLine = Database['public']['Tables']['payroll_lines']['Row']
+export type FinanceAttachment = Database['public']['Tables']['finance_attachments']['Row']
