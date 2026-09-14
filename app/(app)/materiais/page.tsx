@@ -30,5 +30,24 @@ export default async function MateriaisPage() {
   const costMap = buildCompositeCosts((composites ?? []) as Composite[], (items ?? []) as CompositeItem[], matPrice, labPrice, unitPer)
   const costs = Object.fromEntries(Object.entries(costMap).map(([id, c]) => [id, c.total]))
 
-  return <MaterialsWorkspace materials={(materials ?? []) as Material[]} labour={(labour ?? []) as Labour[]} composites={(composites ?? []) as Composite[]} costs={costs} suppliers={(suppliers ?? []) as { id: string; name: string }[]} canEdit={canEdit(level)} />
+  const its = (items ?? []) as CompositeItem[]
+  const matComps: Record<string, Set<string>> = {}
+  const labComps: Record<string, Set<string>> = {}
+  for (const it of its) {
+    if (it.kind === 'material' && it.material_id) (matComps[it.material_id] ||= new Set()).add(it.composite_id)
+    if (it.kind === 'labour' && it.labour_id) (labComps[it.labour_id] ||= new Set()).add(it.composite_id)
+  }
+  const matUsage = Object.fromEntries(Object.entries(matComps).map(([k, v]) => [k, v.size]))
+  const labUsage = Object.fromEntries(Object.entries(labComps).map(([k, v]) => [k, v.size]))
+  const deletedMat = new Set(((materials ?? []) as Material[]).filter(m => m.deleted_at).map(m => m.id))
+  const deletedLab = new Set(((labour ?? []) as Labour[]).filter(l => l.deleted_at).map(l => l.id))
+  const compAlert = new Set<string>()
+  for (const it of its) {
+    if (it.kind === 'material' && it.material_id && deletedMat.has(it.material_id)) compAlert.add(it.composite_id)
+    if (it.kind === 'labour' && it.labour_id && deletedLab.has(it.labour_id)) compAlert.add(it.composite_id)
+  }
+  const liveMaterials = ((materials ?? []) as Material[]).filter(m => !m.deleted_at)
+  const liveLabour = ((labour ?? []) as Labour[]).filter(l => !l.deleted_at)
+
+  return <MaterialsWorkspace materials={liveMaterials} labour={liveLabour} composites={(composites ?? []) as Composite[]} costs={costs} suppliers={(suppliers ?? []) as { id: string; name: string }[]} matUsage={matUsage} labUsage={labUsage} compAlert={Array.from(compAlert)} canEdit={canEdit(level)} />
 }

@@ -5,7 +5,13 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Supplier } from '@/lib/supabase/types'
 import { STATUS_META, KIND_LABEL, SUPPLIES } from '@/lib/suppliers'
-import { Search, SlidersHorizontal, ArrowUpDown, Plus, Pencil, Trash2, Building2, User, X, AlertTriangle } from 'lucide-react'
+import { Search, SlidersHorizontal, Plus, Pencil, Trash2, Building2, User, X, AlertTriangle } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
+import SortHeader from '@/components/ui/SortHeader'
+import { useTableSort } from '@/lib/useTableSort'
+import SelectCheckbox from '@/components/ui/SelectCheckbox'
+import SelectionBar from '@/components/ui/SelectionBar'
+import { useRowSelection } from '@/lib/useRowSelection'
 import LanguageSelect from '@/components/clients/LanguageSelect'
 
 const input =
@@ -15,7 +21,6 @@ const section = 'text-xs uppercase tracking-[0.14em] text-[var(--muted)] border-
 
 type Draft = Partial<Supplier>
 const empty: Draft = { kind: 'empresa', name: '', status: 'ativo', languages: [], supplies: [], incomplete: true }
-type SortKey = 'name' | 'company' | 'created_at'
 
 export default function SuppliersManager({ initial, canEdit }: { initial: Supplier[]; canEdit: boolean }) {
   const supabase = createClient()
@@ -28,7 +33,6 @@ export default function SuppliersManager({ initial, canEdit }: { initial: Suppli
   const [q, setQ] = useState('')
   const [fEstado, setFEstado] = useState<string>('all')
   const [fTipo, setFTipo] = useState<string>('all')
-  const [sortKey, setSortKey] = useState<SortKey>('name')
   const [openPanel, setOpenPanel] = useState<'filter' | 'sort' | null>(null)
 
   const visible = useMemo(() => {
@@ -39,14 +43,11 @@ export default function SuppliersManager({ initial, canEdit }: { initial: Suppli
       if (s && ![r.name, r.company, r.nif, r.city, r.email].filter(Boolean).join(' ').toLowerCase().includes(s)) return false
       return true
     })
-    out = [...out].sort((a, b) => {
-      if (sortKey === 'created_at') return (b.created_at || '').localeCompare(a.created_at || '')
-      const av = (a[sortKey] || '') as string
-      const bv = (b[sortKey] || '') as string
-      return av.localeCompare(bv, 'pt')
-    })
     return out
-  }, [rows, q, fEstado, fTipo, sortKey])
+  }, [rows, q, fEstado, fTipo])
+  const accessors = { name: (r: Supplier) => r.name, email: (r: Supplier) => r.email, phone: (r: Supplier) => r.phone, kind: (r: Supplier) => r.kind, status: (r: Supplier) => r.status }
+  const { sorted, sortKey, sortDir, toggle } = useTableSort(visible, accessors, 'name', 'asc', 'fornecedores')
+  const sel = useRowSelection(sorted.map(r => r.id))
 
   async function refresh() {
     const { data } = await supabase.from('suppliers').select('*').order('name')
@@ -87,10 +88,11 @@ export default function SuppliersManager({ initial, canEdit }: { initial: Suppli
   }
 
   async function remove(id: string) {
-    if (!confirm('Eliminar este fornecedor?')) return
+    
     await supabase.from('suppliers').delete().eq('id', id); refresh()
   }
 
+  async function bulkDelete() { const ids = sel.selectedIds(); if (!ids.length) return; await supabase.from('suppliers').delete().in('id', ids); sel.clear(); refresh() }
   const th = 'text-left text-[11px] uppercase tracking-wider text-[var(--muted)] font-medium px-4 py-3'
   const td = 'px-4 py-3 text-sm'
 
@@ -137,23 +139,6 @@ export default function SuppliersManager({ initial, canEdit }: { initial: Suppli
             )}
           </div>
 
-          <div className="relative">
-            <button onClick={() => setOpenPanel(openPanel === 'sort' ? null : 'sort')} className="p-2 border border-[var(--border)] rounded-[3px] hover:bg-[rgba(26,26,26,0.04)]" title="Ordenar">
-              <ArrowUpDown size={16} />
-            </button>
-            {openPanel === 'sort' && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setOpenPanel(null)} />
-                <div className="absolute right-0 mt-2 z-20 w-44 bg-white border border-[var(--border)] rounded-[4px] shadow-lg p-2">
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--muted)] px-2 py-1">Ordenar</p>
-                  {([['name','Nome'],['company','Empresa'],['created_at','Criado']] as [SortKey,string][]).map(([k, l]) => (
-                    <button key={k} onClick={() => { setSortKey(k); setOpenPanel(null) }} className={`block w-full text-left text-sm px-2 py-1.5 rounded-[3px] hover:bg-[rgba(26,26,26,0.04)] ${sortKey === k ? 'font-medium' : ''}`}>{l}</button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
           {canEdit && (
             <button onClick={() => { setDraft({ ...empty }); setError('') }} className="inline-flex items-center gap-2 text-xs uppercase tracking-wider bg-[#1A1A1A] text-white px-4 py-2.5 rounded-[3px] hover:opacity-80">
               <Plus size={15} /> Adicionar
@@ -162,24 +147,26 @@ export default function SuppliersManager({ initial, canEdit }: { initial: Suppli
         </div>
       </div>
 
+      {canEdit && <SelectionBar count={sel.count} onClear={sel.clear} onDelete={bulkDelete} noun="fornecedores" />}
+
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] overflow-hidden">
         <table className="w-full">
           <thead className="bg-[rgba(26,26,26,0.02)] border-b border-[var(--border)]">
-            <tr>
-              <th className={th}>Nome</th>
-              <th className={th}>Email</th>
-              <th className={th}>Telefone</th>
-              <th className={th}>Tipo</th>
-              <th className={th}>Estado</th>
+            <tr>{canEdit && <th className="px-4 py-3 w-10"><SelectCheckbox checked={sel.allSelected} indeterminate={sel.someSelected} onChange={sel.toggleAll} ariaLabel="Selecionar todos" /></th>}
+              <SortHeader label="Nome" active={sortKey === 'name'} dir={sortDir} onClick={() => toggle('name')} />
+              <SortHeader label="Email" active={sortKey === 'email'} dir={sortDir} onClick={() => toggle('email')} />
+              <SortHeader label="Telefone" active={sortKey === 'phone'} dir={sortDir} onClick={() => toggle('phone')} />
+              <SortHeader label="Tipo" active={sortKey === 'kind'} dir={sortDir} onClick={() => toggle('kind')} />
+              <SortHeader label="Estado" active={sortKey === 'status'} dir={sortDir} onClick={() => toggle('status')} />
               {canEdit && <th className={`${th} text-right`}>Ações</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {visible.length === 0 && (
-              <tr><td colSpan={canEdit ? 6 : 5} className="px-4 py-8 text-center text-sm text-[var(--muted)]">Sem fornecedores{q || fEstado !== 'all' || fTipo !== 'all' ? ' para este filtro' : ' ainda'}.</td></tr>
+            {sorted.length === 0 && (
+              <tr><td colSpan={canEdit ? 7 : 5} className="px-4 py-8 text-center text-sm text-[var(--muted)]">Sem fornecedores{q || fEstado !== 'all' || fTipo !== 'all' ? ' para este filtro' : ' ainda'}.</td></tr>
             )}
-            {visible.map(row => (
-              <tr key={row.id} onClick={() => router.push(`/fornecedores/${row.id}`)} className="hover:bg-[rgba(26,26,26,0.02)] cursor-pointer">
+            {sorted.map(row => (
+              <tr key={row.id} onClick={() => router.push(`/fornecedores/${row.id}`)} className="hover:bg-[rgba(26,26,26,0.02)] cursor-pointer">{canEdit && <td className={td} onClick={e => e.stopPropagation()}><input type="checkbox" checked={sel.isSelected(row.id)} onChange={e => sel.toggle(row.id, (e.nativeEvent as MouseEvent).shiftKey)} className="accent-[#1A1A1A] cursor-pointer align-middle" aria-label="Selecionar" /></td>}
                 <td className={td}>
                   <div className="flex items-center gap-3">
                     <span className="w-8 h-8 rounded-[3px] bg-[rgba(26,26,26,0.06)] flex items-center justify-center shrink-0 text-[var(--muted)]">
@@ -203,7 +190,7 @@ export default function SuppliersManager({ initial, canEdit }: { initial: Suppli
                 {canEdit && (
                   <td className={`${td} text-right whitespace-nowrap`}>
                     <button onClick={e => { e.stopPropagation(); setDraft(row); setError('') }} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1" title="Editar"><Pencil size={15} /></button>
-                    <button onClick={e => { e.stopPropagation(); remove(row.id) }} className="text-[var(--muted)] hover:text-red-500 p-1 ml-1" title="Eliminar"><Trash2 size={15} /></button>
+                    <ConfirmButton stop onConfirm={() => remove(row.id)} message="Eliminar este fornecedor?" className="text-[var(--muted)] hover:text-red-500 p-1 ml-1" title="Eliminar"><Trash2 size={15} /></ConfirmButton>
                   </td>
                 )}
               </tr>

@@ -7,6 +7,7 @@ import type { MaterialUnit } from '@/lib/supabase/types'
 import { UNITS, UNIT_LABEL } from '@/lib/materials'
 import { inputCls, labelCls } from '@/lib/formClasses'
 import { Plus, Trash2, Pencil } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 export default function MaterialUnitsCard({ materialId, baseUnit, initial, canEdit }: { materialId: string; baseUnit: string; initial: MaterialUnit[]; canEdit: boolean }) {
   const baseLabel = UNIT_LABEL[baseUnit] ?? baseUnit
@@ -27,7 +28,7 @@ export default function MaterialUnitsCard({ materialId, baseUnit, initial, canEd
     else await supabase.from('material_units').insert({ ...payload, material_id: materialId })
     setSaving(false); reset(); router.refresh()
   }
-  async function remove(id: string) { if (!confirm('Eliminar esta unidade?')) return; await supabase.from('material_units').delete().eq('id', id); router.refresh() }
+  async function remove(id: string) { await supabase.from('material_units').delete().eq('id', id); router.refresh() }
 
   return (
     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[12px] p-6 mt-4">
@@ -56,7 +57,7 @@ export default function MaterialUnitsCard({ materialId, baseUnit, initial, canEd
         {initial.map(u => (
           <div key={u.id} className="flex items-center gap-4 py-2.5 text-sm first:pt-0">
             <span className="flex-1">1 {baseLabel} = <span className="font-medium">{u.per_base} {UNIT_LABEL[u.label] ?? u.label}</span></span>
-            {canEdit && <><button onClick={() => startEdit(u)} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1"><Pencil size={14} /></button><button onClick={() => remove(u.id)} className="text-[var(--muted)] hover:text-red-500 p-1"><Trash2 size={14} /></button></>}
+            {canEdit && <><button onClick={() => startEdit(u)} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1"><Pencil size={14} /></button><ConfirmButton onConfirm={() => remove(u.id)} message="Eliminar esta unidade?" className="text-[var(--muted)] hover:text-red-500 p-1"><Trash2 size={14} /></ConfirmButton></>}
           </div>
         ))}
       </div>

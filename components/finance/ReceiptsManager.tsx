@@ -1,28 +1,42 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import type { Receipt, CreditNote, FinanceAttachment } from '@/lib/supabase/types'
-import { RECEIPT_STATUS, RECEIPT_STATUSES, VAT_RATES, CURRENCIES, fmtMoney, fmtDate, vatBreakdown } from '@/lib/finance'
+import { RECEIPT_STATUS, RECEIPT_STATUSES, VAT_RATES, CURRENCIES, fmtMoney, fmtDate, vatBreakdown , periodRange, inRange, toCSV, downloadCSV, todayISO} from '@/lib/finance'
 import { inputCls as input, labelCls as label } from '@/lib/formClasses'
 import SearchSelect from '@/components/ui/SearchSelect'
 import AttachmentsSection from './AttachmentsSection'
-import { uploadAttachments, removeAttachment } from './attachmentsHelper'
-import { Search, SlidersHorizontal, Plus, Pencil, Trash2, X, Sparkles, Paperclip, FileMinus } from 'lucide-react'
+import { uploadAttachments, removeAttachment, openFirstAttachment } from './attachmentsHelper'
+import { Search, SlidersHorizontal, Plus, Pencil, Trash2, X, Sparkles, Paperclip, FileMinus, Download } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
+import SortHeader from '@/components/ui/SortHeader'
+import { useTableSort } from '@/lib/useTableSort'
+import SelectCheckbox from '@/components/ui/SelectCheckbox'
+import SelectionBar from '@/components/ui/SelectionBar'
+import RecordView from './RecordView'
+import StatusPicker from './StatusPicker'
+import { useRowSelection } from '@/lib/useRowSelection'
+import PeriodFilter from './PeriodFilter'
+import SummaryBar from './SummaryBar'
+import ImportInvoiceModal from './ImportInvoiceModal'
 
 type Ref = { id: string; name: string }
 type Draft = Partial<Receipt>
 const empty: Draft = { title: 'Fatura', status: 'issued', amount: 0, vat_rate: 23, currency: 'EUR' }
 
 export default function ReceiptsManager({
-  initial, clients, creditNotes, attCounts, canEdit, onImport,
+  initial, clients, projects, creditNotes, attCounts, canEdit, onImport, toolbarSlot,
 }: {
   initial: Receipt[]
   clients: Ref[]
+  projects: Ref[]
   creditNotes: CreditNote[]
   attCounts: Record<string, number>
   canEdit: boolean
   onImport: () => void
+  toolbarSlot?: HTMLElement | null
 }) {
   const supabase = createClient()
   const [rows, setRows] = useState<Receipt[]>(initial)
@@ -32,6 +46,7 @@ export default function ReceiptsManager({
   const [pending, setPending] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [readOnly, setReadOnly] = useState(false)
   // credit-note draft (dentro do modal)
   const [cnAmount, setCnAmount] = useState('')
   const [cnReason, setCnReason] = useState('')
@@ -39,8 +54,13 @@ export default function ReceiptsManager({
   const [q, setQ] = useState('')
   const [fEstado, setFEstado] = useState('all')
   const [openFilter, setOpenFilter] = useState(false)
+  const [period, setPeriod] = useState('all')
+  const [pFrom, setPFrom] = useState('')
+  const [pTo, setPTo] = useState('')
+  const [importing, setImporting] = useState(false)
 
   const clientName = useMemo(() => Object.fromEntries(clients.map(c => [c.id, c.name])), [clients])
+  const projectName = useMemo(() => Object.fromEntries(projects.map(p => [p.id, p.name])), [projects])
   const cnByReceipt = useMemo(() => {
     const m: Record<string, CreditNote[]> = {}
     for (const c of cnotes) (m[c.receipt_id] ||= []).push(c)
@@ -49,15 +69,48 @@ export default function ReceiptsManager({
 
   const visible = useMemo(() => {
     const s = q.trim().toLowerCase()
+    const range = periodRange(period, pFrom, pTo)
     return rows.filter(r => {
+      if (!inRange(r.issue_date, range.from, range.to)) return false
       if (fEstado !== 'all' && r.status !== fEstado) return false
       if (s && ![r.title, r.reference, r.client_id ? clientName[r.client_id] : ''].filter(Boolean).join(' ').toLowerCase().includes(s)) return false
       return true
-    }).sort((a, b) => (b.issue_date || b.created_at || '').localeCompare(a.issue_date || a.created_at || ''))
-  }, [rows, q, fEstado, clientName])
+    })
+  }, [rows, q, fEstado, clientName, period, pFrom, pTo])
+  const accessors = {
+    title: (r: Receipt) => r.title,
+    client: (r: Receipt) => (r.client_id ? clientName[r.client_id] : ''),
+    amount: (r: Receipt) => r.amount,
+    issue: (r: Receipt) => r.issue_date,
+    status: (r: Receipt) => RECEIPT_STATUS[r.status]?.label ?? r.status,
+    credit: (r: Receipt) => (cnByReceipt[r.id]?.length ?? 0),
+  }
+  const { sorted, sortKey, sortDir, toggle } = useTableSort(visible, accessors, 'issue', 'desc', 'fin_recibos')
+  const sel = useRowSelection(sorted.map(r => r.id))
 
   const open = useMemo(() => rows.filter(r => r.status === 'issued' || r.status === 'overdue')
     .reduce((s, r) => s + (r.amount || 0) - (cnByReceipt[r.id]?.reduce((x, c) => x + (c.amount || 0), 0) ?? 0), 0), [rows, cnByReceipt])
+  const total = useMemo(() => visible.reduce((s, r) => s + (r.amount || 0), 0), [visible])
+  const summary = useMemo(() => {
+    let base = 0, iva = 0, recebido = 0, emAberto = 0, cnSum = 0, cnN = 0
+    for (const r of visible) {
+      const b = vatBreakdown(r.amount || 0, r.vat_rate ?? 23); base += b.net; iva += b.vat
+      if (r.status === 'paid') recebido += r.amount || 0
+      const cn = cnByReceipt[r.id]?.reduce((x, c) => x + (c.amount || 0), 0) ?? 0
+      cnSum += cn; cnN += cnByReceipt[r.id]?.length ?? 0
+      if (r.status === 'issued' || r.status === 'overdue') emAberto += (r.amount || 0) - cn
+    }
+    return { base, iva, recebido, emAberto, cnSum, cnN }
+  }, [visible, cnByReceipt])
+  function exportCSV() {
+    const headers = ['Título', 'Cliente', 'Referência', 'Estado', 'Valor total', 'Taxa IVA %', 'Base s/IVA', 'IVA', 'Emissão', 'Pagamento', 'Notas Crédito', 'Notas']
+    const csvRows = sorted.map(r => { const b = vatBreakdown(r.amount || 0, r.vat_rate ?? 23); return [
+      r.title, r.client_id ? clientName[r.client_id] : '', r.reference ?? '', RECEIPT_STATUS[r.status]?.label ?? r.status,
+      (r.amount || 0).toFixed(2), r.vat_rate ?? 23, b.net.toFixed(2), b.vat.toFixed(2),
+      r.issue_date ?? '', r.paid_date ?? '', cnByReceipt[r.id]?.length ?? 0, r.notes ?? '',
+    ] })
+    downloadCSV(`recibos_${todayISO()}.csv`, toCSV(headers, csvRows))
+  }
 
   async function refresh() {
     const [{ data: rec }, { data: cn }] = await Promise.all([
@@ -67,8 +120,8 @@ export default function ReceiptsManager({
     setRows((rec ?? []) as Receipt[]); setCnotes((cn ?? []) as CreditNote[])
   }
 
-  async function openEdit(row: Receipt) {
-    setDraft(row); setPending([]); setError(''); setCnAmount(''); setCnReason('')
+  async function openEdit(row: Receipt, view = false) {
+    setDraft(row); setReadOnly(view); setPending([]); setError(''); setCnAmount(''); setCnReason('')
     const { data } = await supabase.from('finance_attachments').select('*').eq('entity_type', 'receipt').eq('entity_id', row.id)
     setExistingAtts((data ?? []) as FinanceAttachment[])
   }
@@ -107,7 +160,7 @@ export default function ReceiptsManager({
   }
 
   async function remove(id: string) {
-    if (!confirm('Eliminar este recibo?')) return
+    
     await supabase.from('receipts').delete().eq('id', id); refresh()
   }
 
@@ -127,6 +180,11 @@ export default function ReceiptsManager({
     await supabase.from('credit_notes').delete().eq('id', id); refresh()
   }
 
+  async function bulkDelete() { const ids = sel.selectedIds(); if (!ids.length) return; await supabase.from('receipts').delete().in('id', ids); sel.clear(); refresh() }
+  async function setStatus(id: string, status: string) {
+    setRows(rs => rs.map(r => r.id === id ? { ...r, status } as Receipt : r))
+    await supabase.from('receipts').update({ status: status as Receipt['status'] }).eq('id', id)
+  }
   const th = 'text-left text-[11px] uppercase tracking-wider text-[var(--muted)] font-medium px-4 py-3'
   const td = 'px-4 py-3 text-sm'
   const brk = draft ? vatBreakdown(Number(draft.amount) || 0, Number(draft.vat_rate ?? 23)) : null
@@ -134,7 +192,8 @@ export default function ReceiptsManager({
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-5 gap-4">
+      {importing && <ImportInvoiceModal kind="recibo" refs={clients} categories={[]} onClose={() => setImporting(false)} onSaved={() => { setImporting(false); refresh() }} />}
+      {toolbarSlot && createPortal(<>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
@@ -156,42 +215,53 @@ export default function ReceiptsManager({
             )}
           </div>
         </div>
+        <PeriodFilter period={period} from={pFrom} to={pTo} onChange={(pp, f, t) => { setPeriod(pp); setPFrom(f); setPTo(t) }} />
+        <button onClick={exportCSV} className="inline-flex items-center gap-2 text-xs uppercase tracking-wider px-3 py-2.5 border border-[var(--border)] rounded-[3px] hover:bg-[rgba(26,26,26,0.04)]" title="Exportar CSV"><Download size={15} /> CSV</button>
         {canEdit && (
           <div className="flex items-center gap-2">
-            <button onClick={onImport} className="inline-flex items-center gap-2 text-xs uppercase tracking-wider px-3 py-2.5 border border-[var(--border)] rounded-[3px] hover:bg-[rgba(26,26,26,0.04)]"><Sparkles size={15} /> Importar</button>
-            <button onClick={() => { setDraft({ ...empty }); setExistingAtts([]); setPending([]); setError('') }} className="inline-flex items-center gap-2 text-xs uppercase tracking-wider bg-[#1A1A1A] text-white px-4 py-2.5 rounded-[3px] hover:opacity-80"><Plus size={15} /> Novo recibo</button>
+            <button onClick={() => setImporting(true)} className="inline-flex items-center gap-2 text-xs uppercase tracking-wider px-3 py-2.5 border border-[var(--border)] rounded-[3px] hover:bg-[rgba(26,26,26,0.04)]"><Sparkles size={15} /> Importar</button>
+            <button onClick={() => { setDraft({ ...empty }); setReadOnly(false); setExistingAtts([]); setPending([]); setError('') }} className="inline-flex items-center gap-2 text-xs uppercase tracking-wider bg-[#1A1A1A] text-white px-4 py-2.5 rounded-[3px] hover:opacity-80"><Plus size={15} /> Novo recibo</button>
           </div>
         )}
-      </div>
+      </>, toolbarSlot)}
 
-      <div className="mb-4 bg-[rgba(26,26,26,0.03)] border border-[var(--border)] rounded-[4px] px-4 py-3 text-sm">Recibos em aberto: <b>{fmtMoney(open)}</b></div>
+      <SummaryBar items={[
+        { label: 'Faturado', value: fmtMoney(total) },
+        { label: 'Base s/IVA', value: fmtMoney(summary.base) },
+        { label: 'IVA liquidado', value: fmtMoney(summary.iva) },
+        { label: 'Recebido', value: fmtMoney(summary.recebido), accent: 'green' },
+        { label: 'Em aberto', value: fmtMoney(summary.emAberto), accent: 'amber' },
+        { label: 'Notas de crédito', value: `${summary.cnN} · ${fmtMoney(summary.cnSum)}` },
+      ]} />
+
+      {canEdit && <SelectionBar count={sel.count} onClear={sel.clear} onDelete={bulkDelete} noun="recibos" />}
 
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] overflow-hidden">
         <table className="w-full">
           <thead className="bg-[rgba(26,26,26,0.02)] border-b border-[var(--border)]">
-            <tr>
-              <th className={th}>Recibo</th><th className={th}>Cliente / Projeto</th><th className={`${th} text-right`}>Valor</th>
-              <th className={th}>Data de Emissão</th><th className={th}>Estado</th><th className={`${th} text-center`}>N. Crédito</th>
+            <tr>{canEdit && <th className="px-4 py-3 w-10"><SelectCheckbox checked={sel.allSelected} indeterminate={sel.someSelected} onChange={sel.toggleAll} ariaLabel="Selecionar todos" /></th>}
+              <SortHeader label="Recibo" active={sortKey === 'title'} dir={sortDir} onClick={() => toggle('title')} /><SortHeader label="Cliente / Projeto" active={sortKey === 'client'} dir={sortDir} onClick={() => toggle('client')} /><SortHeader label="Valor" align="right" active={sortKey === 'amount'} dir={sortDir} onClick={() => toggle('amount')} />
+              <SortHeader label="Data de Emissão" active={sortKey === 'issue'} dir={sortDir} onClick={() => toggle('issue')} /><SortHeader label="Estado" active={sortKey === 'status'} dir={sortDir} onClick={() => toggle('status')} /><SortHeader label="N. Crédito" align="center" active={sortKey === 'credit'} dir={sortDir} onClick={() => toggle('credit')} />
               {canEdit && <th className={`${th} text-right`}>Ações</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {visible.length === 0 && <tr><td colSpan={canEdit ? 7 : 6} className="px-4 py-8 text-center text-sm text-[var(--muted)]">Nenhum resultado encontrado.</td></tr>}
-            {visible.map(row => (
-              <tr key={row.id} className="hover:bg-[rgba(26,26,26,0.02)]">
+            {sorted.length === 0 && <tr><td colSpan={canEdit ? 8 : 6} className="px-4 py-8 text-center text-sm text-[var(--muted)]">Nenhum resultado encontrado.</td></tr>}
+            {sorted.map(row => (
+              <tr key={row.id} onClick={() => openEdit(row, true)} className="hover:bg-[rgba(26,26,26,0.02)] cursor-pointer">{canEdit && <td className={td} onClick={e => e.stopPropagation()}><input type="checkbox" checked={sel.isSelected(row.id)} onChange={e => sel.toggle(row.id, (e.nativeEvent as MouseEvent).shiftKey)} className="accent-[#1A1A1A] cursor-pointer align-middle" aria-label="Selecionar" /></td>}
                 <td className={td}>
-                  <p className="font-medium flex items-center gap-1.5">{(attCounts[row.id] ?? 0) > 0 && <Paperclip size={12} className="text-[var(--muted)]" />}{row.title}</p>
+                  <p className="font-medium flex items-center gap-1.5">{(attCounts[row.id] ?? 0) > 0 && <button type="button" onClick={e => { e.stopPropagation(); openFirstAttachment(supabase, 'receipt', row.id) }} className="text-[var(--muted)] hover:text-[#1A1A1A]" title="Abrir anexo"><Paperclip size={12} /></button>}{row.title}</p>
                   {row.reference && <p className="text-xs text-[var(--muted)]">Ref: {row.reference}</p>}
                 </td>
-                <td className={`${td} text-[var(--muted)]`}>{row.client_id ? clientName[row.client_id] : '—'}</td>
+                <td className={`${td} text-[var(--muted)]`}>{row.client_id ? clientName[row.client_id] : (row.project_id ? '' : '—')}{row.project_id && projectName[row.project_id] ? <span className="block text-xs">{projectName[row.project_id]}</span> : null}</td>
                 <td className={`${td} text-right font-medium whitespace-nowrap`}>{fmtMoney(row.amount, row.currency)}</td>
                 <td className={`${td} text-[var(--muted)] whitespace-nowrap`}>{fmtDate(row.issue_date)}</td>
-                <td className={td}><span className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded-[3px] ${RECEIPT_STATUS[row.status]?.cls}`}>{RECEIPT_STATUS[row.status]?.label}</span></td>
+                <td className={td}><StatusPicker value={row.status} options={RECEIPT_STATUSES} meta={RECEIPT_STATUS} canEdit={canEdit} onChange={st => setStatus(row.id, st)} /></td>
                 <td className={`${td} text-center text-[var(--muted)]`}>{cnByReceipt[row.id]?.length ?? 0}</td>
                 {canEdit && (
                   <td className={`${td} text-right whitespace-nowrap`}>
                     <button onClick={() => openEdit(row)} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1" title="Editar"><Pencil size={15} /></button>
-                    <button onClick={() => remove(row.id)} className="text-[var(--muted)] hover:text-red-500 p-1 ml-1" title="Eliminar"><Trash2 size={15} /></button>
+                    <ConfirmButton stop onConfirm={() => remove(row.id)} message="Eliminar este recibo?" className="text-[var(--muted)] hover:text-red-500 p-1 ml-1" title="Eliminar"><Trash2 size={15} /></ConfirmButton>
                   </td>
                 )}
               </tr>
@@ -204,13 +274,38 @@ export default function ReceiptsManager({
         <div className="fixed inset-0 z-40 bg-black/40 flex items-start justify-center overflow-y-auto p-4">
           <div className="bg-white rounded-[6px] w-full max-w-2xl my-8 p-6 md:p-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-playfair text-2xl">{draft.id ? 'Editar recibo' : 'Novo recibo'}</h2>
+              <h2 className="font-playfair text-2xl">{draft.id ? (readOnly ? 'Ver recibo' : 'Editar recibo') : 'Novo recibo'}</h2>
               <button onClick={() => setDraft(null)} className="text-[var(--muted)] hover:text-[#1A1A1A]"><X size={20} /></button>
             </div>
+            {readOnly ? (
+              <RecordView atts={existingAtts} notes={draft.notes} rows={[
+                { label: 'Título', value: draft.title, full: true },
+                { label: 'Cliente', value: draft.client_id ? clientName[draft.client_id] : '—' },
+                { label: 'Projeto / Obra', value: draft.project_id ? (projectName[draft.project_id] ?? '—') : '—' },
+                { label: 'Estado', value: RECEIPT_STATUS[draft.status ?? 'issued']?.label ?? draft.status },
+                { label: 'Referência / Nº fatura', value: draft.reference || '—' },
+                { label: 'Valor total (c/ IVA)', value: fmtMoney(Number(draft.amount) || 0, draft.currency) },
+                { label: 'Taxa IVA', value: `${draft.vat_rate ?? 23}%` },
+                { label: 'Base tributável', value: fmtMoney(brk?.net ?? 0, draft.currency) },
+                { label: 'IVA', value: fmtMoney(brk?.vat ?? 0, draft.currency) },
+                { label: 'Data de emissão', value: fmtDate(draft.issue_date) },
+                { label: 'Data de pagamento', value: fmtDate(draft.paid_date) },
+              ]}>
+                {draftCns.length > 0 && (
+                  <div className="mt-5">
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--muted)] mb-1">Notas de crédito</p>
+                    <ul className="flex flex-col gap-1.5">
+                      {draftCns.map(cn => <li key={cn.id} className="flex items-center gap-3 text-sm"><span className="font-medium">{fmtMoney(cn.amount)}</span><span className="text-[var(--muted)] truncate">{cn.reason || '—'}</span><span className="text-xs text-[var(--muted)] ml-auto whitespace-nowrap">{fmtDate(cn.issue_date)}</span></li>)}
+                    </ul>
+                  </div>
+                )}
+              </RecordView>
+            ) : (<>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2"><label className={label}>Título <span className="text-red-500">*</span></label><input className={input} value={draft.title ?? ''} onChange={e => setDraft({ ...draft, title: e.target.value })} /></div>
               <div><label className={label}>Cliente</label><SearchSelect options={clients.map(c => ({ id: c.id, label: c.name }))} value={draft.client_id ?? ''} onChange={id => setDraft({ ...draft, client_id: id })} placeholder="— Nenhum —" /></div>
+              <div><label className={label}>Projeto / Obra</label><SearchSelect options={projects.map(p => ({ id: p.id, label: p.name }))} value={draft.project_id ?? ''} onChange={id => setDraft({ ...draft, project_id: id })} placeholder="— Nenhum —" /></div>
               <div><label className={label}>Estado</label>
                 <select className={input} value={draft.status ?? 'issued'} onChange={e => setDraft({ ...draft, status: e.target.value as Receipt['status'] })}>
                   {RECEIPT_STATUSES.map(s => <option key={s} value={s}>{RECEIPT_STATUS[s].label}</option>)}
@@ -247,7 +342,7 @@ export default function ReceiptsManager({
                       <span className="font-medium">{fmtMoney(cn.amount)}</span>
                       <span className="text-[var(--muted)] truncate">{cn.reason || '—'}</span>
                       <span className="text-xs text-[var(--muted)] ml-auto whitespace-nowrap">{fmtDate(cn.issue_date)}</span>
-                      <button onClick={() => removeCreditNote(cn.id)} className="text-[var(--muted)] hover:text-red-500" title="Eliminar"><Trash2 size={14} /></button>
+                      <ConfirmButton onConfirm={() => removeCreditNote(cn.id)} message="Eliminar esta nota de crédito?" className="text-[var(--muted)] hover:text-red-500" title="Eliminar"><Trash2 size={14} /></ConfirmButton>
                     </li>
                   ))}
                 </ul>
@@ -262,9 +357,15 @@ export default function ReceiptsManager({
             </div>
 
             {error && <p className="text-xs text-red-500 mt-3">{error}</p>}
+            </>)}
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setDraft(null)} className="text-sm px-5 py-2 border border-[var(--border)] rounded-[3px] hover:bg-[rgba(26,26,26,0.04)]">Cancelar</button>
-              <button onClick={save} disabled={saving} className="text-sm bg-[#1A1A1A] text-white px-5 py-2 rounded-[3px] hover:opacity-80 disabled:opacity-50">{saving ? 'A guardar…' : 'Guardar'}</button>
+              {readOnly ? (<>
+                <button onClick={() => setDraft(null)} className="text-sm px-5 py-2 border border-[var(--border)] rounded-[3px] hover:bg-[rgba(26,26,26,0.04)]">Fechar</button>
+                {canEdit && <button onClick={() => setReadOnly(false)} className="text-sm bg-[#1A1A1A] text-white px-5 py-2 rounded-[3px] hover:opacity-80">Editar</button>}
+              </>) : (<>
+                <button onClick={() => setDraft(null)} className="text-sm px-5 py-2 border border-[var(--border)] rounded-[3px] hover:bg-[rgba(26,26,26,0.04)]">Cancelar</button>
+                <button onClick={save} disabled={saving} className="text-sm bg-[#1A1A1A] text-white px-5 py-2 rounded-[3px] hover:opacity-80 disabled:opacity-50">{saving ? 'A guardar…' : 'Guardar'}</button>
+              </>)}
             </div>
           </div>
         </div>

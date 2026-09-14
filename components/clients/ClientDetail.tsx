@@ -8,6 +8,7 @@ import type { Client, ClientContact } from '@/lib/supabase/types'
 import { STATUS_META, KIND_LABEL } from '@/lib/clients'
 import EntityAvatar from '@/components/ui/EntityAvatar'
 import EditableSection from '@/components/ui/EditableSection'
+import MapsLink from '@/components/ui/MapsLink'
 import LanguageSelect from './LanguageSelect'
 import ClientContacts from './ClientContacts'
 import { buildEntityVCard, downloadVCard } from '@/lib/vcard'
@@ -133,7 +134,7 @@ export default function ClientDetail({ client, canEdit, initialContacts }: { cli
                   <Row icon={<Building2 size={15} className={rowIcon} />} label="Empresa">{value.company || '—'}</Row>
                   <Row icon={<Tag size={15} className={rowIcon} />} label="Tipo">{KIND_LABEL[value.kind] ?? value.kind}</Row>
                   <Row icon={<Hash size={15} className={rowIcon} />} label="NIF">{value.nif || '—'}</Row>
-                  <Row icon={<MapPin size={15} className={rowIcon} />} label="Morada">{[value.address, value.city, value.country].filter(Boolean).join(', ') || '—'}</Row>
+                  <Row icon={<MapPin size={15} className={rowIcon} />} label="Morada"><MapsLink parts={[value.address, value.city, value.country]} /></Row>
                   {value.languages.length > 0 && <Row icon={<Languages size={15} className={rowIcon} />} label="Línguas">{value.languages.join(', ')}</Row>}
                   <Row icon={<CircleCheck size={15} className={rowIcon} />} label="Adicionado">{added}</Row>
                 </div>

@@ -20,6 +20,7 @@ export default function FinanceWorkspace(props: {
   suppliers: Ref[]
   clients: Ref[]
   staff: Ref[]
+  projects: Ref[]
   categories: ExpenseCategory[]
   attCounts: Record<string, number>
   canEdit: boolean
@@ -28,29 +29,32 @@ export default function FinanceWorkspace(props: {
   const [categories, setCategories] = useState<ExpenseCategory[]>(props.categories)
   const [showCats, setShowCats] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const [toolbarEl, setToolbarEl] = useState<HTMLDivElement | null>(null)
 
   const tabs: [Tab, string][] = [['despesas', 'Despesas'], ['recibos', 'Recibos'], ['vencimentos', 'Vencimentos']]
 
   return (
     <div className="w-full">
-      <div className="flex items-baseline gap-6 mb-1">
-        <h1 className="font-playfair text-3xl">Finanças</h1>
-      </div>
-
-      <div className="flex items-center gap-6 border-b border-[var(--border)] mb-6">
-        {tabs.map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)} className={`pb-2 -mb-px text-sm transition-colors border-b-2 ${tab === k ? 'border-[#1A1A1A] text-[#1A1A1A] font-medium' : 'border-transparent text-[var(--muted)] hover:text-[#1A1A1A]'}`}>{l}</button>
-        ))}
+      <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+        <div className="flex items-center gap-6 flex-wrap">
+          <h1 className="font-playfair text-3xl">Finanças</h1>
+          <nav className="flex items-center gap-5">
+            {tabs.map(([k, l]) => (
+              <button key={k} onClick={() => setTab(k)} className={`pb-1 text-sm transition-colors border-b-2 ${tab === k ? 'border-[#1A1A1A] text-[#1A1A1A] font-medium' : 'border-transparent text-[var(--muted)] hover:text-[#1A1A1A]'}`}>{l}</button>
+            ))}
+          </nav>
+        </div>
+        <div ref={setToolbarEl} className="flex items-center gap-2 flex-wrap" />
       </div>
 
       {tab === 'despesas' && (
-        <ExpensesManager initial={props.expenses} suppliers={props.suppliers} categories={categories} attCounts={props.attCounts} canEdit={props.canEdit} onImport={() => setShowImport(true)} onManageCategories={() => setShowCats(true)} />
+        <ExpensesManager initial={props.expenses} suppliers={props.suppliers} projects={props.projects} categories={categories} attCounts={props.attCounts} canEdit={props.canEdit} onImport={() => setShowImport(true)} onManageCategories={() => setShowCats(true)} toolbarSlot={toolbarEl} />
       )}
       {tab === 'recibos' && (
-        <ReceiptsManager initial={props.receipts} clients={props.clients} creditNotes={props.creditNotes} attCounts={props.attCounts} canEdit={props.canEdit} onImport={() => setShowImport(true)} />
+        <ReceiptsManager initial={props.receipts} clients={props.clients} projects={props.projects} creditNotes={props.creditNotes} attCounts={props.attCounts} canEdit={props.canEdit} onImport={() => setShowImport(true)} toolbarSlot={toolbarEl} />
       )}
       {tab === 'vencimentos' && (
-        <PayrollManager initial={props.payroll} lines={props.payrollLines} staff={props.staff} categories={categories} attCounts={props.attCounts} canEdit={props.canEdit} onImport={() => setShowImport(true)} />
+        <PayrollManager initial={props.payroll} lines={props.payrollLines} staff={props.staff} categories={categories} attCounts={props.attCounts} canEdit={props.canEdit} onImport={() => setShowImport(true)} toolbarSlot={toolbarEl} />
       )}
 
       {showCats && <CategoryManager initial={categories} onClose={() => setShowCats(false)} onChanged={setCategories} />}

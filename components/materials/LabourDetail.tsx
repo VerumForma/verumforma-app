@@ -9,6 +9,7 @@ import { eur } from '@/lib/materials'
 import PriceChart from './PriceChart'
 import { inputCls, labelCls } from '@/lib/formClasses'
 import { ArrowLeft, HardHat, Plus, Trash2, Pencil, X } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 export default function LabourDetail({ labour, prices, canEdit }: { labour: Labour; prices: LabourPrice[]; canEdit: boolean }) {
   const supabase = createClient()
@@ -30,7 +31,7 @@ export default function LabourDetail({ labour, prices, canEdit }: { labour: Labo
     setSaving(false); setAdding(false); setNc({ cost: '', date: new Date().toISOString().slice(0, 10) }); router.refresh()
   }
   async function removeCost(id: string) {
-    if (!confirm('Eliminar este registo?')) return
+    
     await supabase.from('labour_prices').delete().eq('id', id)
     const rest = prices.filter(p => p.id !== id).sort((a, b) => a.price_date.localeCompare(b.price_date))
     await supabase.from('labour').update({ hourly_cost: rest.at(-1)?.hourly_cost ?? null }).eq('id', labour.id)
@@ -91,7 +92,7 @@ export default function LabourDetail({ labour, prices, canEdit }: { labour: Labo
               <span className="w-28 text-[var(--muted)]">{pr.price_date}</span>
               <span className="flex-1 text-[var(--muted)]">{pr.source === 'manual' ? 'Manual' : pr.source}</span>
               <span className="font-medium">{eur(pr.hourly_cost)}/h</span>
-              {canEdit && <button onClick={() => removeCost(pr.id)} className="text-[var(--muted)] hover:text-red-500 p-1"><Trash2 size={14} /></button>}
+              {canEdit && <ConfirmButton onConfirm={() => removeCost(pr.id)} message="Eliminar este registo?" className="text-[var(--muted)] hover:text-red-500 p-1"><Trash2 size={14} /></ConfirmButton>}
             </div>
           ))}
         </div>

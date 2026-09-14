@@ -6,11 +6,16 @@ import { createClient } from '@/lib/supabase/client'
 import type { Staff } from '@/lib/supabase/types'
 import { STATUS_META, DEPARTMENTS, DEPT_LABEL } from '@/lib/team'
 import StaffForm from './StaffForm'
-import { Search, SlidersHorizontal, ArrowUpDown, Plus, Pencil, Trash2, List, LayoutGrid, AlertTriangle } from 'lucide-react'
+import { Search, SlidersHorizontal, Plus, Pencil, Trash2, List, LayoutGrid, AlertTriangle } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
+import SortHeader from '@/components/ui/SortHeader'
+import { useTableSort } from '@/lib/useTableSort'
+import SelectCheckbox from '@/components/ui/SelectCheckbox'
+import SelectionBar from '@/components/ui/SelectionBar'
+import { useRowSelection } from '@/lib/useRowSelection'
 
 const inputCls = 'w-full bg-white text-sm px-3 py-2 border border-[var(--border)] rounded-[3px] outline-none focus:border-[#1A1A1A]'
 const label = 'block text-xs uppercase tracking-wider text-[var(--muted)] mb-1.5'
-type SortKey = 'name' | 'department' | 'hire_date'
 type Role = { key: string; label_pt: string }
 
 function initials(name: string) {
@@ -27,7 +32,6 @@ export default function TeamManager({ initial, canEdit, roles }: { initial: Staf
   const [q, setQ] = useState('')
   const [fDept, setFDept] = useState('all')
   const [fStatus, setFStatus] = useState('all')
-  const [sortKey, setSortKey] = useState<SortKey>('name')
   const [panel, setPanel] = useState<'filter' | 'sort' | null>(null)
   const [view, setView] = useState<'list' | 'grid'>('list')
 
@@ -39,22 +43,22 @@ export default function TeamManager({ initial, canEdit, roles }: { initial: Staf
       if (s && ![r.name, r.cargo, r.email].filter(Boolean).join(' ').toLowerCase().includes(s)) return false
       return true
     })
-    out = [...out].sort((a, b) => {
-      if (sortKey === 'hire_date') return (b.hire_date || '').localeCompare(a.hire_date || '')
-      return ((a[sortKey] || '') as string).localeCompare((b[sortKey] || '') as string, 'pt')
-    })
     return out
-  }, [rows, q, fDept, fStatus, sortKey])
+  }, [rows, q, fDept, fStatus])
+  const accessors = { name: (r: Staff) => r.name, cargo: (r: Staff) => r.cargo, department: (r: Staff) => DEPT_LABEL[r.department] ?? r.department, email: (r: Staff) => r.email, status: (r: Staff) => r.status }
+  const { sorted, sortKey, sortDir, toggle } = useTableSort(visible, accessors, 'name', 'asc', 'equipa')
+  const sel = useRowSelection(sorted.map(r => r.id))
 
   async function refresh() {
     const { data } = await supabase.from('staff').select('*').order('name')
     setRows((data ?? []) as Staff[])
   }
   async function remove(id: string) {
-    if (!confirm('Eliminar este membro?')) return
+    
     await supabase.from('staff').delete().eq('id', id); refresh()
   }
 
+  async function bulkDelete() { const ids = sel.selectedIds(); if (!ids.length) return; await supabase.from('staff').delete().in('id', ids); sel.clear(); refresh() }
   const th = 'text-left text-[11px] uppercase tracking-wider text-[var(--muted)] font-medium px-4 py-3'
   const td = 'px-4 py-3 text-sm'
   const Avatar = ({ s }: { s: Staff }) => (
@@ -94,18 +98,6 @@ export default function TeamManager({ initial, canEdit, roles }: { initial: Staf
               </div>
             </>)}
           </div>
-          <div className="relative">
-            <button onClick={() => setPanel(panel === 'sort' ? null : 'sort')} className="p-2 border border-[var(--border)] rounded-[3px] hover:bg-[rgba(26,26,26,0.04)]"><ArrowUpDown size={16} /></button>
-            {panel === 'sort' && (<>
-              <div className="fixed inset-0 z-10" onClick={() => setPanel(null)} />
-              <div className="absolute right-0 mt-2 z-20 w-52 bg-white border border-[var(--border)] rounded-[4px] shadow-lg p-2">
-                <p className="text-[10px] uppercase tracking-wider text-[var(--muted)] px-2 py-1">Ordenar</p>
-                {([['name','Nome'],['department','Departamento'],['hire_date','Data de contratação']] as [SortKey,string][]).map(([k,l]) => (
-                  <button key={k} onClick={() => { setSortKey(k); setPanel(null) }} className={`block w-full text-left text-sm px-2 py-1.5 rounded-[3px] hover:bg-[rgba(26,26,26,0.04)] ${sortKey===k?'font-medium':''}`}>{l}</button>
-                ))}
-              </div>
-            </>)}
-          </div>
           <div className="flex border border-[var(--border)] rounded-[3px] overflow-hidden">
             <button onClick={() => setView('list')} className={`p-2 ${view==='list'?'bg-[rgba(26,26,26,0.06)]':''}`}><List size={16} /></button>
             <button onClick={() => setView('grid')} className={`p-2 ${view==='grid'?'bg-[rgba(26,26,26,0.06)]':''}`}><LayoutGrid size={16} /></button>
@@ -114,16 +106,18 @@ export default function TeamManager({ initial, canEdit, roles }: { initial: Staf
         </div>
       </div>
 
+      {canEdit && <SelectionBar count={sel.count} onClear={sel.clear} onDelete={bulkDelete} noun="membros" />}
+
       {view === 'list' ? (
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] overflow-hidden">
           <table className="w-full">
             <thead className="bg-[rgba(26,26,26,0.02)] border-b border-[var(--border)]">
-              <tr><th className={th}>Nome</th><th className={th}>Cargo</th><th className={th}>Departamento</th><th className={th}>Email</th><th className={th}>Estado</th>{canEdit && <th className={`${th} text-right`}>Ações</th>}</tr>
+              <tr>{canEdit && <th className="px-4 py-3 w-10"><SelectCheckbox checked={sel.allSelected} indeterminate={sel.someSelected} onChange={sel.toggleAll} ariaLabel="Selecionar todos" /></th>}<SortHeader label="Nome" active={sortKey === 'name'} dir={sortDir} onClick={() => toggle('name')} /><SortHeader label="Cargo" active={sortKey === 'cargo'} dir={sortDir} onClick={() => toggle('cargo')} /><SortHeader label="Departamento" active={sortKey === 'department'} dir={sortDir} onClick={() => toggle('department')} /><SortHeader label="Email" active={sortKey === 'email'} dir={sortDir} onClick={() => toggle('email')} /><SortHeader label="Estado" active={sortKey === 'status'} dir={sortDir} onClick={() => toggle('status')} />{canEdit && <th className={`${th} text-right`}>Ações</th>}</tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {visible.length === 0 && <tr><td colSpan={canEdit?6:5} className="px-4 py-8 text-center text-sm text-[var(--muted)]">Sem membros.</td></tr>}
-              {visible.map(row => (
-                <tr key={row.id} onClick={() => router.push(`/equipa/${row.id}`)} className="hover:bg-[rgba(26,26,26,0.02)] cursor-pointer">
+              {sorted.length === 0 && <tr><td colSpan={canEdit?7:5} className="px-4 py-8 text-center text-sm text-[var(--muted)]">Sem membros.</td></tr>}
+              {sorted.map(row => (
+                <tr key={row.id} onClick={() => router.push(`/equipa/${row.id}`)} className="hover:bg-[rgba(26,26,26,0.02)] cursor-pointer">{canEdit && <td className={td} onClick={e => e.stopPropagation()}><input type="checkbox" checked={sel.isSelected(row.id)} onChange={e => sel.toggle(row.id, (e.nativeEvent as MouseEvent).shiftKey)} className="accent-[#1A1A1A] cursor-pointer align-middle" aria-label="Selecionar" /></td>}
                   <td className={td}><div className="flex items-center gap-3"><Avatar s={row} /><span className="font-medium flex items-center gap-1.5">{row.incomplete && <AlertTriangle size={13} className="text-amber-500 shrink-0" aria-label="Dados incompletos" />}{row.name}</span></div></td>
                   <td className={`${td} text-[var(--muted)]`}>{row.cargo || '—'}</td>
                   <td className={`${td} text-[var(--muted)]`}>{DEPT_LABEL[row.department] ?? row.department}</td>
@@ -131,7 +125,7 @@ export default function TeamManager({ initial, canEdit, roles }: { initial: Staf
                   <td className={td}><span className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded-[3px] ${STATUS_META[row.status]?.cls}`}>{STATUS_META[row.status]?.label}</span></td>
                   {canEdit && <td className={`${td} text-right whitespace-nowrap`}>
                     <button onClick={e => { e.stopPropagation(); setEditing(row) }} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1"><Pencil size={15} /></button>
-                    <button onClick={e => { e.stopPropagation(); remove(row.id) }} className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={15} /></button>
+                    <ConfirmButton stop onConfirm={() => remove(row.id)} message="Eliminar este membro?" className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={15} /></ConfirmButton>
                   </td>}
                 </tr>
               ))}
@@ -140,7 +134,7 @@ export default function TeamManager({ initial, canEdit, roles }: { initial: Staf
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {visible.map(row => (
+          {sorted.map(row => (
             <div key={row.id} onClick={() => router.push(`/equipa/${row.id}`)} className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5 cursor-pointer hover:border-[#1A1A1A] transition-colors">
               <div className="flex items-center gap-3 mb-3">
                 <Avatar s={row} />
@@ -152,7 +146,7 @@ export default function TeamManager({ initial, canEdit, roles }: { initial: Staf
               </div>
             </div>
           ))}
-          {visible.length === 0 && <p className="text-sm text-[var(--muted)] col-span-full">Sem membros.</p>}
+          {sorted.length === 0 && <p className="text-sm text-[var(--muted)] col-span-full">Sem membros.</p>}
         </div>
       )}
 

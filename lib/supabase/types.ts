@@ -434,9 +434,9 @@ export type Database = {
         Relationships: []
       }
       staff_personal: {
-        Row: { staff_id: string; birth_date: string | null; nif: string | null; niss: string | null; address: string | null; cc: string | null; street: string | null; door: string | null; postal_code: string | null; city: string | null }
-        Insert: { staff_id: string; birth_date?: string | null; nif?: string | null; niss?: string | null; address?: string | null; cc?: string | null; street?: string | null; door?: string | null; postal_code?: string | null; city?: string | null }
-        Update: { birth_date?: string | null; nif?: string | null; niss?: string | null; address?: string | null; cc?: string | null; street?: string | null; door?: string | null; postal_code?: string | null; city?: string | null }
+        Row: { staff_id: string; birth_date: string | null; nif: string | null; niss: string | null; address: string | null; cc: string | null; street: string | null; door: string | null; postal_code: string | null; city: string | null; legal_name: string | null; health_number: string | null }
+        Insert: { staff_id: string; birth_date?: string | null; nif?: string | null; niss?: string | null; address?: string | null; cc?: string | null; street?: string | null; door?: string | null; postal_code?: string | null; city?: string | null; legal_name?: string | null; health_number?: string | null }
+        Update: { birth_date?: string | null; nif?: string | null; niss?: string | null; address?: string | null; cc?: string | null; street?: string | null; door?: string | null; postal_code?: string | null; city?: string | null; legal_name?: string | null; health_number?: string | null }
         Relationships: []
       }
       staff_finance: {
@@ -470,9 +470,9 @@ export type Database = {
         Relationships: []
       }
       materials: {
-        Row: { id: string; name: string; category: string | null; unit: string; current_price: number | null; notes: string | null; created_by: string | null; created_at: string }
-        Insert: { id?: string; name: string; category?: string | null; unit?: string; current_price?: number | null; notes?: string | null }
-        Update: { name?: string; category?: string | null; unit?: string; current_price?: number | null; notes?: string | null }
+        Row: { id: string; code: string | null; name: string; category: string | null; unit: string; current_price: number | null; notes: string | null; deleted_at: string | null; created_by: string | null; created_at: string }
+        Insert: { id?: string; code?: string | null; name: string; category?: string | null; unit?: string; current_price?: number | null; notes?: string | null; deleted_at?: string | null }
+        Update: { code?: string | null; name?: string; category?: string | null; unit?: string; current_price?: number | null; notes?: string | null; deleted_at?: string | null }
         Relationships: []
       }
       material_prices: {
@@ -482,9 +482,9 @@ export type Database = {
         Relationships: []
       }
       labour: {
-        Row: { id: string; name: string; hourly_cost: number | null; notes: string | null; created_by: string | null; created_at: string }
-        Insert: { id?: string; name: string; hourly_cost?: number | null; notes?: string | null }
-        Update: { name?: string; hourly_cost?: number | null; notes?: string | null }
+        Row: { id: string; name: string; hourly_cost: number | null; notes: string | null; deleted_at: string | null; created_by: string | null; created_at: string }
+        Insert: { id?: string; name: string; hourly_cost?: number | null; notes?: string | null; deleted_at?: string | null }
+        Update: { name?: string; hourly_cost?: number | null; notes?: string | null; deleted_at?: string | null }
         Relationships: []
       }
       labour_prices: {
@@ -515,6 +515,12 @@ export type Database = {
         Row: { id: string; name: string; color: string; internal: boolean; created_by: string | null; created_at: string }
         Insert: { id?: string; name: string; color?: string; internal?: boolean }
         Update: { name?: string; color?: string; internal?: boolean }
+        Relationships: []
+      }
+      projects: {
+        Row: { id: string; code: string | null; name: string; client_id: string | null; manager_id: string | null; status: 'adjudicado' | 'em_curso' | 'pausado' | 'concluido' | 'cancelado'; address: string | null; city: string | null; start_date: string | null; end_date: string | null; completed_date: string | null; budget: number | null; description: string | null; incomplete: boolean; created_by: string | null; created_at: string }
+        Insert: { id?: string; code?: string | null; name: string; client_id?: string | null; manager_id?: string | null; status?: 'adjudicado' | 'em_curso' | 'pausado' | 'concluido' | 'cancelado'; address?: string | null; city?: string | null; start_date?: string | null; end_date?: string | null; completed_date?: string | null; budget?: number | null; description?: string | null; incomplete?: boolean }
+        Update: { code?: string | null; name?: string; client_id?: string | null; manager_id?: string | null; status?: 'adjudicado' | 'em_curso' | 'pausado' | 'concluido' | 'cancelado'; address?: string | null; city?: string | null; start_date?: string | null; end_date?: string | null; completed_date?: string | null; budget?: number | null; description?: string | null; incomplete?: boolean }
         Relationships: []
       }
       expenses: {
@@ -553,6 +559,18 @@ export type Database = {
         Update: { name?: string }
         Relationships: []
       }
+      user_table_prefs: {
+        Row: { user_id: string; table_key: string; sort_key: string; sort_dir: 'asc' | 'desc'; updated_at: string }
+        Insert: { user_id: string; table_key: string; sort_key: string; sort_dir?: 'asc' | 'desc'; updated_at?: string }
+        Update: { sort_key?: string; sort_dir?: 'asc' | 'desc'; updated_at?: string }
+        Relationships: []
+      }
+      material_external_refs: {
+        Row: { id: string; material_id: string; supplier_id: string | null; external_ref: string; created_at: string }
+        Insert: { id?: string; material_id: string; supplier_id?: string | null; external_ref: string }
+        Update: { supplier_id?: string | null; external_ref?: string }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
@@ -584,6 +602,8 @@ export type LabourPrice = Database['public']['Tables']['labour_prices']['Row']
 export type Composite = Database['public']['Tables']['composites']['Row']
 export type CompositeItem = Database['public']['Tables']['composite_items']['Row']
 export type MaterialUnit = Database['public']['Tables']['material_units']['Row']
+export type MaterialExternalRef = Database['public']['Tables']['material_external_refs']['Row']
+export type Project = Database['public']['Tables']['projects']['Row']
 export type ExpenseCategory = Database['public']['Tables']['expense_categories']['Row']
 export type Expense = Database['public']['Tables']['expenses']['Row']
 export type Receipt = Database['public']['Tables']['receipts']['Row']

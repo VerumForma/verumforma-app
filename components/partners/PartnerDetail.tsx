@@ -8,6 +8,7 @@ import type { Partner, PartnerContact } from '@/lib/supabase/types'
 import { STATUS_META, KIND_LABEL, PARTNER_TYPES, PARTNER_TYPE_LABEL } from '@/lib/partners'
 import EntityAvatar from '@/components/ui/EntityAvatar'
 import EditableSection from '@/components/ui/EditableSection'
+import MapsLink from '@/components/ui/MapsLink'
 import LanguageSelect from '@/components/clients/LanguageSelect'
 import PartnerContacts from './PartnerContacts'
 import { buildEntityVCard, downloadVCard } from '@/lib/vcard'
@@ -135,7 +136,7 @@ export default function PartnerDetail({ partner, canEdit, initialContacts }: { p
                   <Row icon={<Handshake size={15} className={rowIcon} />} label="Tipo de parceria">{value.partner_type ? (PARTNER_TYPE_LABEL[value.partner_type] ?? value.partner_type) : '—'}</Row>
                   <Row icon={<Tag size={15} className={rowIcon} />} label="Tipo">{KIND_LABEL[value.kind] ?? value.kind}</Row>
                   <Row icon={<Hash size={15} className={rowIcon} />} label="NIF">{value.nif || '—'}</Row>
-                  <Row icon={<MapPin size={15} className={rowIcon} />} label="Morada">{[value.address, value.city, value.country].filter(Boolean).join(', ') || '—'}</Row>
+                  <Row icon={<MapPin size={15} className={rowIcon} />} label="Morada"><MapsLink parts={[value.address, value.city, value.country]} /></Row>
                   {value.languages.length > 0 && <Row icon={<Languages size={15} className={rowIcon} />} label="Línguas">{value.languages.join(', ')}</Row>}
                   <Row icon={<CircleCheck size={15} className={rowIcon} />} label="Adicionado">{added}</Row>
                 </div>

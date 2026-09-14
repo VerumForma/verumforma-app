@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { StaffFamily } from '@/lib/supabase/types'
 import { Plus, Pencil, Trash2, Phone, Gift, CalendarHeart, Heart } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 const input = 'w-full bg-white text-sm px-3 py-2 border border-[var(--border)] rounded-[3px] outline-none focus:border-[#1A1A1A]'
 const label = 'block text-xs uppercase tracking-wider text-[var(--muted)] mb-1.5'
@@ -31,7 +32,7 @@ export default function StaffFamily({ staffId, initial, canEdit, showGift }: { s
     setSaving(false)
     if (!error) { setDraft(null); refresh() }
   }
-  async function remove(id: string) { if (confirm('Eliminar?')) { await supabase.from('staff_family').delete().eq('id', id); refresh() } }
+  async function remove(id: string) { await supabase.from('staff_family').delete().eq('id', id); refresh() }
   const benefit = (r: string) => r === 'conjuge' ? { icon: <CalendarHeart size={12} />, text: 'Folga no aniversário' } : r === 'filho' ? { icon: <Gift size={12} />, text: 'Presente no aniversário' } : null
 
   return (
@@ -82,7 +83,7 @@ export default function StaffFamily({ staffId, initial, canEdit, showGift }: { s
               </div>
               {canEdit && <div className="shrink-0 whitespace-nowrap">
                 <button onClick={() => setDraft(f)} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1"><Pencil size={15} /></button>
-                <button onClick={() => remove(f.id)} className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={15} /></button>
+                <ConfirmButton onConfirm={() => remove(f.id)} message="Eliminar este familiar?" className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={15} /></ConfirmButton>
               </div>}
             </div>
           )

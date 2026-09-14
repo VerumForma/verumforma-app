@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { StaffCertification } from '@/lib/supabase/types'
 import { Plus, Pencil, Trash2, AlertTriangle, Award } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 const input = 'w-full bg-white text-sm px-3 py-2 border border-[var(--border)] rounded-[3px] outline-none focus:border-[#1A1A1A]'
 const label = 'block text-xs uppercase tracking-wider text-[var(--muted)] mb-1.5'
@@ -38,7 +39,7 @@ export default function StaffCertifications({ staffId, initial, canEdit }: { sta
     setSaving(false)
     if (!error) { setDraft(null); refresh() }
   }
-  async function remove(id: string) { if (confirm('Eliminar certificação?')) { await supabase.from('staff_certifications').delete().eq('id', id); refresh() } }
+  async function remove(id: string) { await supabase.from('staff_certifications').delete().eq('id', id); refresh() }
 
   return (
     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[12px] p-6">
@@ -76,7 +77,7 @@ export default function StaffCertifications({ staffId, initial, canEdit }: { sta
               {e && <span className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded-[3px] inline-flex items-center gap-1 ${e.cls}`}>{e.text !== 'Válida' && <AlertTriangle size={11} />}{e.text}</span>}
               {canEdit && <div className="shrink-0 whitespace-nowrap">
                 <button onClick={() => setDraft(c)} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1"><Pencil size={15} /></button>
-                <button onClick={() => remove(c.id)} className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={15} /></button>
+                <ConfirmButton onConfirm={() => remove(c.id)} message="Eliminar esta certificação?" className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={15} /></ConfirmButton>
               </div>}
             </div>
           )

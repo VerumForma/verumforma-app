@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { StaffNotes } from '@/lib/supabase/types'
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 const fmt = (d: string) => new Date(d).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })
 const sticky = 'relative rounded-[10px] p-4 min-h-[110px] text-sm whitespace-pre-wrap bg-amber-50 border border-amber-200/70'
@@ -30,7 +31,7 @@ export default function StaffNotesCard({ staffId, initial, canEdit }: { staffId:
     else await supabase.from('staff_notes').update({ content: text.trim() }).eq('id', draftId!)
     setSaving(false); cancel(); refresh()
   }
-  async function remove(id: string) { if (confirm('Eliminar esta nota?')) { await supabase.from('staff_notes').delete().eq('id', id); refresh() } }
+  async function remove(id: string) { await supabase.from('staff_notes').delete().eq('id', id); refresh() }
 
   const editor = (isNew: boolean) => (
     <div className={sticky}>
@@ -54,7 +55,7 @@ export default function StaffNotesCard({ staffId, initial, canEdit }: { staffId:
           {canEdit && (
             <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button onClick={() => startEdit(n)} className="text-amber-800/70 hover:text-amber-900" aria-label="Editar"><Pencil size={14} /></button>
-              <button onClick={() => remove(n.id)} className="text-amber-800/70 hover:text-red-600" aria-label="Eliminar"><Trash2 size={14} /></button>
+              <ConfirmButton onConfirm={() => remove(n.id)} message="Eliminar esta nota?" className="text-amber-800/70 hover:text-red-600" title="Eliminar"><Trash2 size={14} /></ConfirmButton>
             </div>
           )}
         </div>

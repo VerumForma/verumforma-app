@@ -8,7 +8,8 @@ import type { Composite, CompositeItem, Material, Labour, MaterialUnit } from '@
 import { UNITS, UNIT_LABEL, eur, compositeCost } from '@/lib/materials'
 import { inputCls, labelCls } from '@/lib/formClasses'
 import SearchSelect from '@/components/ui/SearchSelect'
-import { ArrowLeft, Layers, Plus, Trash2, Pencil, X, Package, HardHat } from 'lucide-react'
+import { ArrowLeft, Layers, Plus, Trash2, Pencil, X, Package, HardHat, AlertTriangle } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 export default function CompositeDetail({ composite, items, materials, labour, materialUnits, composites, childCosts, canEdit }: { composite: Composite; items: CompositeItem[]; materials: Material[]; labour: Labour[]; materialUnits: MaterialUnit[]; composites: { id: string; name: string; unit: string }[]; childCosts: Record<string, number>; canEdit: boolean }) {
   const supabase = createClient()
@@ -26,16 +27,17 @@ export default function CompositeDetail({ composite, items, materials, labour, m
       const m = it.material_id ? matById[it.material_id] : null
       const baseLabel = m ? (UNIT_LABEL[m.unit] ?? m.unit) : ''
       const per = it.unit ? (unitPer[it.material_id ?? '']?.[it.unit] ?? 1) : 1
-      return { name: m?.name ?? '(removido)', price: m?.current_price ?? 0, u: it.unit ? (UNIT_LABEL[it.unit] ?? it.unit) : baseLabel, baseQty: it.quantity / (per || 1) }
+      return { name: m?.name ?? '(removido)', price: m?.current_price ?? 0, u: it.unit ? (UNIT_LABEL[it.unit] ?? it.unit) : baseLabel, baseQty: it.quantity / (per || 1), deleted: !!m?.deleted_at }
     }
     if (it.kind === 'composite') {
       const c = it.composite_ref_id ? compById[it.composite_ref_id] : null
-      return { name: c?.name ?? '(removido)', price: childCosts[it.composite_ref_id ?? ''] ?? 0, u: c ? (UNIT_LABEL[c.unit] ?? c.unit) : '', baseQty: it.quantity }
+      return { name: c?.name ?? '(removido)', price: childCosts[it.composite_ref_id ?? ''] ?? 0, u: c ? (UNIT_LABEL[c.unit] ?? c.unit) : '', baseQty: it.quantity, deleted: false }
     }
-    const l = it.labour_id ? labById[it.labour_id] : null; return { name: l?.name ?? '(removido)', price: l?.hourly_cost ?? 0, u: 'h', baseQty: it.quantity }
+    const l = it.labour_id ? labById[it.labour_id] : null; return { name: l?.name ?? '(removido)', price: l?.hourly_cost ?? 0, u: 'h', baseQty: it.quantity, deleted: !!l?.deleted_at }
   }
   const lines = items.map(it => { const r = resolve(it); return { kind: it.kind, quantity: r.baseQty, price: r.price } })
   const cost = compositeCost(lines, composite.waste_pct)
+  const hasDeleted = items.some(it => resolve(it).deleted)
 
   const [adding, setAdding] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
@@ -87,6 +89,13 @@ export default function CompositeDetail({ composite, items, materials, labour, m
         <div className="text-right shrink-0"><p className="font-playfair text-2xl">{eur(cost.total)}</p><p className="text-xs text-[var(--muted)]">custo real /{unit}</p></div>
       </div>
 
+      {hasDeleted && (
+        <div className="mb-4 flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-[6px] px-4 py-3 text-sm">
+          <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+          <span>Este artigo contém material ou mão de obra que foi <b>apagado</b>. O custo mantém o último preço conhecido — substitui o componente por um ativo quando puderes.</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2 bg-[var(--surface)] border border-[var(--border)] rounded-[12px] p-6">
           <div className="flex items-center justify-between mb-4">
@@ -99,7 +108,7 @@ export default function CompositeDetail({ composite, items, materials, labour, m
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className={labelCls}>Tipo</label><select className={inputCls} value={ni.kind} onChange={e => setNi({ ...ni, kind: e.target.value as 'material' | 'labour' | 'composite', id: '', unit: '' })}><option value="material">Material</option><option value="labour">Mão de obra</option><option value="composite">Artigo composto</option></select></div>
                 <div><label className={labelCls}>{ni.kind === 'material' ? 'Material' : ni.kind === 'labour' ? 'Mão de obra' : 'Artigo composto'}</label>
-                  <SearchSelect options={ni.kind === 'composite' ? composites.filter(c => c.id !== composite.id).map(c => ({ id: c.id, label: c.name })) : (ni.kind === 'material' ? materials : labour).map(o => ({ id: o.id, label: o.name }))} value={ni.id} onChange={id => setNi({ ...ni, id, unit: '' })} placeholder="Procurar e selecionar…" />
+                  <SearchSelect options={ni.kind === 'composite' ? composites.filter(c => c.id !== composite.id).map(c => ({ id: c.id, label: c.name })) : (ni.kind === 'material' ? materials : labour).filter(o => !o.deleted_at).map(o => ({ id: o.id, label: o.name }))} value={ni.id} onChange={id => setNi({ ...ni, id, unit: '' })} placeholder="Procurar e selecionar…" />
                 </div>
                 {ni.kind === 'material' && (
                   <div><label className={labelCls}>Unidade de medida</label>
@@ -129,13 +138,13 @@ export default function CompositeDetail({ composite, items, materials, labour, m
                   return (
                     <tr key={it.id}>
                       <td className={td}>
-                        <div className="flex items-center gap-2">{it.kind === 'material' ? <Package size={14} className="text-[var(--muted)]" /> : it.kind === 'composite' ? <Layers size={14} className="text-[var(--muted)]" /> : <HardHat size={14} className="text-[var(--muted)]" />}<span className="font-medium">{r.name}</span></div>
+                        <div className="flex items-center gap-2">{it.kind === 'material' ? <Package size={14} className="text-[var(--muted)]" /> : it.kind === 'composite' ? <Layers size={14} className="text-[var(--muted)]" /> : <HardHat size={14} className="text-[var(--muted)]" />}<span className={`font-medium ${r.deleted ? 'text-[var(--muted)] italic' : ''}`}>{r.name}</span>{r.deleted && <span className="text-[10px] uppercase tracking-wider text-amber-600">(apagado)</span>}</div>
                         {it.note && <p className="text-xs text-[var(--muted)] mt-0.5 ml-6">{it.note}</p>}
                       </td>
                       <td className={`${td} text-right whitespace-nowrap`}>{it.quantity} {r.u}</td>
                       <td className={`${td} text-right whitespace-nowrap text-[var(--muted)]`}>{eur(r.price)}</td>
                       <td className={`${td} text-right whitespace-nowrap font-medium`}>{eur(r.baseQty * r.price)}</td>
-                      {canEdit && <td className={`${td} text-right whitespace-nowrap`}><button onClick={() => startEdit(it)} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1"><Pencil size={14} /></button><button onClick={() => removeItem(it.id)} className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={14} /></button></td>}
+                      {canEdit && <td className={`${td} text-right whitespace-nowrap`}><button onClick={() => startEdit(it)} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1"><Pencil size={14} /></button><ConfirmButton onConfirm={() => removeItem(it.id)} message="Eliminar este item?" className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={14} /></ConfirmButton></td>}
                     </tr>
                   )
                 })}

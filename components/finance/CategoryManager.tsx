@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ExpenseCategory } from '@/lib/supabase/types'
 import { Plus, Trash2, X } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 const input = 'w-full bg-white text-sm px-3 py-2 border border-[var(--border)] rounded-[3px] outline-none focus:border-[#1A1A1A] transition-colors'
 const label = 'block text-xs uppercase tracking-wider text-[var(--muted)] mb-1.5'
@@ -33,7 +34,7 @@ export default function CategoryManager({ initial, onClose, onChanged }: { initi
   }
 
   async function remove(id: string) {
-    if (!confirm('Eliminar esta categoria?')) return
+    
     await supabase.from('expense_categories').delete().eq('id', id); refresh()
   }
 
@@ -75,7 +76,7 @@ export default function CategoryManager({ initial, onClose, onChanged }: { initi
                 <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ background: c.color }} />
                 <span className="truncate">{c.name}</span>
                 {c.internal && <span className="text-[10px] uppercase tracking-wider text-[var(--muted)]">interna</span>}
-                <button onClick={() => remove(c.id)} className="ml-auto text-[var(--muted)] hover:text-red-500" title="Eliminar"><Trash2 size={14} /></button>
+                <ConfirmButton onConfirm={() => remove(c.id)} message="Eliminar esta categoria?" className="ml-auto text-[var(--muted)] hover:text-red-500" title="Eliminar"><Trash2 size={14} /></ConfirmButton>
               </li>
             ))}
           </ul>

@@ -1,6 +1,7 @@
 'use client'
 
 import { Upload, FileText, Trash2, X } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 import { createClient } from '@/lib/supabase/client'
 import type { FinanceAttachment } from '@/lib/supabase/types'
 import { openAttachment } from './attachmentsHelper'
@@ -30,7 +31,7 @@ export default function AttachmentsSection({
             <li key={att.id} className="flex items-center gap-2 text-sm">
               <FileText size={14} className="text-[var(--muted)] shrink-0" />
               <button type="button" onClick={() => openAttachment(supabase, att)} className="text-blue-600 hover:underline truncate">{att.name}</button>
-              <button type="button" onClick={() => onRemoveExisting(att)} className="ml-auto text-[var(--muted)] hover:text-red-500" title="Remover"><Trash2 size={14} /></button>
+              <ConfirmButton onConfirm={() => onRemoveExisting(att)} message="Remover este anexo?" confirmLabel="Remover" className="ml-auto text-[var(--muted)] hover:text-red-500" title="Remover"><Trash2 size={14} /></ConfirmButton>
             </li>
           ))}
           {pending.map((f, i) => (

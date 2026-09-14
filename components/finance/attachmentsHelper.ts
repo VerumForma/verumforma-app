@@ -24,3 +24,9 @@ export async function openAttachment(supabase: SB, att: FinanceAttachment) {
   const { data } = await supabase.storage.from('financas').createSignedUrl(att.file_path, 3600)
   if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener')
 }
+
+export async function openFirstAttachment(supabase: SB, entityType: FinanceEntity, entityId: string) {
+  const { data } = await supabase.from('finance_attachments').select('*').eq('entity_type', entityType).eq('entity_id', entityId).order('created_at').limit(1)
+  const att = (data ?? [])[0] as FinanceAttachment | undefined
+  if (att) await openAttachment(supabase, att)
+}

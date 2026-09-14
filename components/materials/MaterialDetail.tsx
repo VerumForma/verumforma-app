@@ -4,16 +4,18 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { Material, MaterialPrice, MaterialUnit } from '@/lib/supabase/types'
+import type { Material, MaterialPrice, MaterialUnit, MaterialExternalRef } from '@/lib/supabase/types'
 import { UNITS, UNIT_LABEL, eur } from '@/lib/materials'
 import PriceChart from './PriceChart'
 import MaterialUnitsCard from './MaterialUnitsCard'
+import MaterialExtRefsCard from './MaterialExtRefsCard'
 import { inputCls, labelCls } from '@/lib/formClasses'
 import { ArrowLeft, Package, Plus, Trash2, Pencil, X } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 type Supplier = { id: string; name: string }
 
-export default function MaterialDetail({ material, prices, suppliers, units, canEdit }: { material: Material; prices: MaterialPrice[]; suppliers: Supplier[]; units: MaterialUnit[]; canEdit: boolean }) {
+export default function MaterialDetail({ material, prices, suppliers, units, extRefs, canEdit }: { material: Material; prices: MaterialPrice[]; suppliers: Supplier[]; units: MaterialUnit[]; extRefs: MaterialExternalRef[]; canEdit: boolean }) {
   const supabase = createClient()
   const router = useRouter()
   const supName = (id: string | null) => suppliers.find(s => s.id === id)?.name ?? null
@@ -36,7 +38,7 @@ export default function MaterialDetail({ material, prices, suppliers, units, can
     setSaving(false); setAdding(false); setNp({ price: '', date: new Date().toISOString().slice(0, 10), supplier_id: '' }); router.refresh()
   }
   async function removePrice(id: string) {
-    if (!confirm('Eliminar este registo de preço?')) return
+    
     await supabase.from('material_prices').delete().eq('id', id)
     const rest = prices.filter(p => p.id !== id).sort((a, b) => a.price_date.localeCompare(b.price_date))
     await supabase.from('materials').update({ current_price: rest.at(-1)?.price ?? null }).eq('id', material.id)
@@ -63,6 +65,7 @@ export default function MaterialDetail({ material, prices, suppliers, units, can
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="font-playfair text-3xl leading-tight">{material.name}</h1>
+            {material.code && <span className="text-xs font-mono text-[var(--muted)] border border-[var(--border)] rounded px-1.5 py-0.5">{material.code}</span>}
             {canEdit && <button onClick={() => setEdit({ name: material.name, category: material.category ?? '', unit: material.unit, notes: material.notes ?? '' })} className="text-[var(--muted)] hover:text-[#1A1A1A]" aria-label="Editar"><Pencil size={16} /></button>}
           </div>
           <p className="text-sm text-[var(--muted)] mt-1">{subtitle}</p>
@@ -91,6 +94,8 @@ export default function MaterialDetail({ material, prices, suppliers, units, can
 
       <MaterialUnitsCard materialId={material.id} baseUnit={material.unit} initial={units} canEdit={canEdit} />
 
+      <MaterialExtRefsCard materialId={material.id} suppliers={suppliers} initial={extRefs} canEdit={canEdit} />
+
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[12px] p-6 mt-4">
         <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)] mb-4">Histórico</p>
         {prices.length === 0 && <p className="text-sm text-[var(--muted)]">Sem registos.</p>}
@@ -100,7 +105,7 @@ export default function MaterialDetail({ material, prices, suppliers, units, can
               <span className="w-28 text-[var(--muted)]">{pr.price_date}</span>
               <span className="flex-1 text-[var(--muted)]">{supName(pr.supplier_id) || (pr.source === 'manual' ? 'Manual' : '—')}</span>
               <span className="font-medium">{eur(pr.price)}/{unit}</span>
-              {canEdit && <button onClick={() => removePrice(pr.id)} className="text-[var(--muted)] hover:text-red-500 p-1"><Trash2 size={14} /></button>}
+              {canEdit && <ConfirmButton onConfirm={() => removePrice(pr.id)} message="Eliminar este registo de preço?" className="text-[var(--muted)] hover:text-red-500 p-1"><Trash2 size={14} /></ConfirmButton>}
             </div>
           ))}
         </div>

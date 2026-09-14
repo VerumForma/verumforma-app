@@ -7,7 +7,7 @@ import type { Expense, Receipt, CreditNote, Payroll, PayrollLine, ExpenseCategor
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Finanças · VerumForma' }
 
-const emptyProps = { expenses: [], receipts: [], creditNotes: [], payroll: [], payrollLines: [], suppliers: [], clients: [], staff: [], categories: [], attCounts: {} }
+const emptyProps = { expenses: [], receipts: [], creditNotes: [], payroll: [], payrollLines: [], suppliers: [], clients: [], staff: [], projects: [], categories: [], attCounts: {} }
 
 export default async function FinancasPage() {
   if (!supabaseConfigured()) return <FinanceWorkspace {...emptyProps} canEdit />
@@ -17,7 +17,7 @@ export default async function FinancasPage() {
 
   const [
     { data: expenses }, { data: receipts }, { data: creditNotes }, { data: payroll }, { data: payrollLines },
-    { data: categories }, { data: suppliers }, { data: clients }, { data: staff }, { data: attachments },
+    { data: categories }, { data: suppliers }, { data: clients }, { data: staff }, { data: projects }, { data: attachments },
   ] = await Promise.all([
     supabase.from('expenses').select('*').order('issue_date', { ascending: false }),
     supabase.from('receipts').select('*').order('issue_date', { ascending: false }),
@@ -28,6 +28,7 @@ export default async function FinancasPage() {
     supabase.from('suppliers').select('id, name').order('name'),
     supabase.from('clients').select('id, name').order('name'),
     supabase.from('staff').select('id, name').order('name'),
+    supabase.from('projects').select('id, name').order('name'),
     supabase.from('finance_attachments').select('entity_id'),
   ])
 
@@ -45,6 +46,7 @@ export default async function FinancasPage() {
       suppliers={(suppliers ?? []) as { id: string; name: string }[]}
       clients={(clients ?? []) as { id: string; name: string }[]}
       staff={(staff ?? []) as { id: string; name: string }[]}
+      projects={(projects ?? []) as { id: string; name: string }[]}
       attCounts={attCounts}
       canEdit={canEdit(level)}
     />

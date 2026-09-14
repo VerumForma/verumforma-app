@@ -1,17 +1,24 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Labour } from '@/lib/supabase/types'
 import { eur } from '@/lib/materials'
 import { Search, Plus, Pencil, Trash2, HardHat, X } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
+import SortHeader from '@/components/ui/SortHeader'
+import { useTableSort } from '@/lib/useTableSort'
+import SelectCheckbox from '@/components/ui/SelectCheckbox'
+import SelectionBar from '@/components/ui/SelectionBar'
+import { useRowSelection } from '@/lib/useRowSelection'
 
 const input = 'w-full bg-white text-sm px-3 py-2 border border-[var(--border)] rounded-[3px] outline-none focus:border-[#1A1A1A]'
 const label = 'block text-xs uppercase tracking-wider text-[var(--muted)] mb-1.5'
 type Draft = Partial<Labour> & { initialCost?: string }
 
-export default function LabourManager({ initial, canEdit }: { initial: Labour[]; canEdit: boolean }) {
+export default function LabourManager({ initial, usage = {}, canEdit, toolbarSlot }: { initial: Labour[]; usage?: Record<string, number>; toolbarSlot?: HTMLElement | null; canEdit: boolean }) {
   const supabase = createClient()
   const router = useRouter()
   const [rows, setRows] = useState<Labour[]>(initial)
@@ -21,7 +28,10 @@ export default function LabourManager({ initial, canEdit }: { initial: Labour[];
   const [q, setQ] = useState('')
 
   const visible = useMemo(() => { const s = q.trim().toLowerCase(); return s ? rows.filter(r => r.name.toLowerCase().includes(s)) : rows }, [rows, q])
-  async function refresh() { const { data } = await supabase.from('labour').select('*').order('name'); setRows((data ?? []) as Labour[]) }
+  const accessors = { name: (r: Labour) => r.name, cost: (r: Labour) => r.hourly_cost }
+  const { sorted, sortKey, sortDir, toggle } = useTableSort(visible, accessors, 'name', 'asc', 'mao_obra')
+  const sel = useRowSelection(sorted.map(r => r.id))
+  async function refresh() { const { data } = await supabase.from('labour').select('*').is('deleted_at', null).order('name'); setRows((data ?? []) as Labour[]) }
 
   async function save() {
     if (!draft?.name?.trim()) { setError('O nome é obrigatório.'); return }
@@ -38,33 +48,47 @@ export default function LabourManager({ initial, canEdit }: { initial: Labour[];
     }
     setDraft(null); refresh()
   }
-  async function remove(id: string) { if (confirm('Eliminar esta mão de obra?')) { await supabase.from('labour').delete().eq('id', id); refresh() } }
+  async function remove(id: string) {
+    if ((usage[id] ?? 0) > 0) await supabase.from('labour').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+    else await supabase.from('labour').delete().eq('id', id)
+    refresh()
+  }
 
+  async function bulkDelete() {
+    const ids = sel.selectedIds(); if (!ids.length) return
+    const used = ids.filter(id => (usage[id] ?? 0) > 0)
+    const free = ids.filter(id => (usage[id] ?? 0) === 0)
+    if (used.length) await supabase.from('labour').update({ deleted_at: new Date().toISOString() }).in('id', used)
+    if (free.length) await supabase.from('labour').delete().in('id', free)
+    sel.clear(); refresh()
+  }
   const th = 'text-left text-[11px] uppercase tracking-wider text-[var(--muted)] font-medium px-4 py-3'
   const td = 'px-4 py-3 text-sm'
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4 gap-4">
-        <div className="relative max-w-xs w-full">
+      {toolbarSlot && createPortal(<>
+        <div className="relative w-56">
           <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Procurar…" className={`${input} pl-8`} />
         </div>
         {canEdit && <button onClick={() => setDraft({})} className="inline-flex items-center gap-2 text-xs uppercase tracking-wider bg-[#1A1A1A] text-white px-4 py-2.5 rounded-[3px] hover:opacity-80"><Plus size={15} /> Mão de obra</button>}
-      </div>
+      </>, toolbarSlot)}
+
+      {canEdit && <SelectionBar count={sel.count} onClear={sel.clear} onDelete={bulkDelete} noun="mão de obra" />}
 
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] overflow-hidden">
         <table className="w-full">
-          <thead className="bg-[rgba(26,26,26,0.02)] border-b border-[var(--border)]"><tr><th className={th}>Tipo</th><th className={`${th} text-right`}>Custo/hora</th>{canEdit && <th className={`${th} text-right`}>Ações</th>}</tr></thead>
+          <thead className="bg-[rgba(26,26,26,0.02)] border-b border-[var(--border)]"><tr>{canEdit && <th className="px-4 py-3 w-10"><SelectCheckbox checked={sel.allSelected} indeterminate={sel.someSelected} onChange={sel.toggleAll} ariaLabel="Selecionar todos" /></th>}<SortHeader label="Tipo" active={sortKey==='name'} dir={sortDir} onClick={() => toggle('name')} /><SortHeader label="Custo/hora" align="right" active={sortKey==='cost'} dir={sortDir} onClick={() => toggle('cost')} />{canEdit && <th className={`${th} text-right`}>Ações</th>}</tr></thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {visible.length === 0 && <tr><td colSpan={canEdit ? 3 : 2} className="px-4 py-8 text-center text-sm text-[var(--muted)]">Sem mão de obra.</td></tr>}
-            {visible.map(row => (
-              <tr key={row.id} onClick={() => router.push(`/materiais/mo/${row.id}`)} className="hover:bg-[rgba(26,26,26,0.02)] cursor-pointer">
+            {sorted.length === 0 && <tr><td colSpan={canEdit ? 4 : 2} className="px-4 py-8 text-center text-sm text-[var(--muted)]">Sem mão de obra.</td></tr>}
+            {sorted.map(row => (
+              <tr key={row.id} onClick={() => router.push(`/materiais/mo/${row.id}`)} className="hover:bg-[rgba(26,26,26,0.02)] cursor-pointer">{canEdit && <td className={td} onClick={e => e.stopPropagation()}><input type="checkbox" checked={sel.isSelected(row.id)} onChange={e => sel.toggle(row.id, (e.nativeEvent as MouseEvent).shiftKey)} className="accent-[#1A1A1A] cursor-pointer align-middle" aria-label="Selecionar" /></td>}
                 <td className={td}><div className="flex items-center gap-3"><HardHat size={15} className="text-[var(--muted)]" /><span className="font-medium">{row.name}</span></div></td>
                 <td className={`${td} text-right`}>{eur(row.hourly_cost)}<span className="text-[var(--muted)]"> /h</span></td>
                 {canEdit && <td className={`${td} text-right whitespace-nowrap`}>
                   <button onClick={e => { e.stopPropagation(); setDraft(row) }} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1"><Pencil size={15} /></button>
-                  <button onClick={e => { e.stopPropagation(); remove(row.id) }} className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={15} /></button>
+                  <ConfirmButton stop onConfirm={() => remove(row.id)} message={(usage[row.id] ?? 0) > 0 ? `Usada em ${usage[row.id]} artigo(s) composto(s). Ao eliminar, fica marcada como apagada e esses artigos passam a mostrar um alerta. Continuar?` : 'Eliminar esta mão de obra?'} className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={15} /></ConfirmButton>
                 </td>}
               </tr>
             ))}

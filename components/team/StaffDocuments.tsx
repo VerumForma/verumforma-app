@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { StaffDocument } from '@/lib/supabase/types'
 import { FileText, Upload, Trash2, ExternalLink } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 const CATS: { key: string; label: string }[] = [
   { key: 'cc', label: 'Cartão de Cidadão' },
@@ -47,7 +48,7 @@ export default function StaffDocuments({ staffId, initial, canEdit }: { staffId:
   }
 
   async function remove(doc: StaffDocument) {
-    if (!confirm('Eliminar este documento?')) return
+    
     await supabase.storage.from('documents').remove([doc.file_path])
     await supabase.from('staff_documents').delete().eq('id', doc.id)
     refresh()
@@ -78,7 +79,7 @@ export default function StaffDocuments({ staffId, initial, canEdit }: { staffId:
               <p className="text-xs text-[var(--muted)]">{CAT_LABEL[doc.category] ?? doc.category}</p>
             </div>
             <button onClick={() => view(doc)} className="inline-flex items-center gap-1 text-xs text-[#1A1A1A] hover:underline"><ExternalLink size={13} /> Ver</button>
-            {canEdit && <button onClick={() => remove(doc)} className="text-[var(--muted)] hover:text-red-500 p-1"><Trash2 size={15} /></button>}
+            {canEdit && <ConfirmButton onConfirm={() => remove(doc)} message="Eliminar este documento?" className="text-[var(--muted)] hover:text-red-500 p-1"><Trash2 size={15} /></ConfirmButton>}
           </div>
         ))}
       </div>

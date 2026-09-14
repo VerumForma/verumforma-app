@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { PartnerContact } from '@/lib/supabase/types'
 import { buildContactVCard, downloadVCard } from '@/lib/vcard'
 import { Plus, Pencil, Trash2, Star, Download, Users } from 'lucide-react'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 const input = 'w-full bg-white text-sm px-3 py-2 border border-[var(--border)] rounded-[3px] outline-none focus:border-[#1A1A1A]'
 const label = 'block text-xs uppercase tracking-wider text-[var(--muted)] mb-1.5'
@@ -32,7 +33,7 @@ export default function PartnerContacts({ partnerId, initial, canEdit, orgName }
     if (error) { setError(error.message); return }
     setDraft(null); refresh()
   }
-  async function remove(id: string) { if (confirm('Eliminar este contacto?')) { await supabase.from('partner_contacts').delete().eq('id', id); refresh() } }
+  async function remove(id: string) { await supabase.from('partner_contacts').delete().eq('id', id); refresh() }
 
   return (
     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[12px] p-6">
@@ -75,7 +76,7 @@ export default function PartnerContacts({ partnerId, initial, canEdit, orgName }
               <button onClick={() => downloadVCard(`${c.name}.vcf`, buildContactVCard(c, orgName))} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1" title="Exportar (.vcf)"><Download size={15} /></button>
               {canEdit && <>
                 <button onClick={() => { setDraft(c); setError('') }} className="text-[var(--muted)] hover:text-[#1A1A1A] p-1 ml-1"><Pencil size={15} /></button>
-                <button onClick={() => remove(c.id)} className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={15} /></button>
+                <ConfirmButton onConfirm={() => remove(c.id)} message="Eliminar este contacto?" className="text-[var(--muted)] hover:text-red-500 p-1 ml-1"><Trash2 size={15} /></ConfirmButton>
               </>}
             </div>
           </div>

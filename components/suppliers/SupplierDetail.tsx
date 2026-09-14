@@ -8,6 +8,7 @@ import type { Supplier, SupplierContact } from '@/lib/supabase/types'
 import { STATUS_META, KIND_LABEL, SUPPLIES, SUPPLY_LABEL } from '@/lib/suppliers'
 import EntityAvatar from '@/components/ui/EntityAvatar'
 import EditableSection from '@/components/ui/EditableSection'
+import MapsLink from '@/components/ui/MapsLink'
 import SupplierContacts from './SupplierContacts'
 import { buildEntityVCard, downloadVCard } from '@/lib/vcard'
 import { inputCls, labelCls } from '@/lib/formClasses'
@@ -141,7 +142,7 @@ export default function SupplierDetail({ supplier, canEdit, initialContacts }: {
                   <Row icon={<Building2 size={15} className={rowIcon} />} label="Empresa">{value.company || '—'}</Row>
                   <Row icon={<Tag size={15} className={rowIcon} />} label="Tipo">{KIND_LABEL[value.kind] ?? value.kind}</Row>
                   <Row icon={<Hash size={15} className={rowIcon} />} label="NIF">{value.nif || '—'}</Row>
-                  <Row icon={<MapPin size={15} className={rowIcon} />} label="Morada">{[value.address, value.city, value.country].filter(Boolean).join(', ') || '—'}</Row>
+                  <Row icon={<MapPin size={15} className={rowIcon} />} label="Morada"><MapsLink parts={[value.address, value.city, value.country]} /></Row>
                   {value.supplies.length > 0 && <Row icon={<Package size={15} className={rowIcon} />} label="Fornece">{suppliesLabel(value.supplies, value.labour_type)}</Row>}
                   <Row icon={<CircleCheck size={15} className={rowIcon} />} label="Adicionado">{added}</Row>
                 </div>
